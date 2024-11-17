@@ -1,0 +1,11 @@
+D:\Xocket\bin\Release\net8.0\Xocket.deps.json
+D:\Xocket\bin\Release\net8.0\Xocket.dll
+D:\Xocket\bin\Release\net8.0\Xocket.pdb
+D:\Xocket\obj\Release\net8.0\Xocket.GeneratedMSBuildEditorConfig.editorconfig
+D:\Xocket\obj\Release\net8.0\Xocket.AssemblyInfoInputs.cache
+D:\Xocket\obj\Release\net8.0\Xocket.AssemblyInfo.cs
+D:\Xocket\obj\Release\net8.0\Xocket.csproj.CoreCompileInputs.cache
+D:\Xocket\obj\Release\net8.0\Xocket.dll
+D:\Xocket\obj\Release\net8.0\refint\Xocket.dll
+D:\Xocket\obj\Release\net8.0\Xocket.pdb
+D:\Xocket\obj\Release\net8.0\ref\Xocket.dll
