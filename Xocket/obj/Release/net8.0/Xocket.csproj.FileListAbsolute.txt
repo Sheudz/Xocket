@@ -20,3 +20,4 @@ C:\Users\sheud\Documents\GitHub\Xocket\Xocket\obj\Release\net8.0\Xocket.dll
 C:\Users\sheud\Documents\GitHub\Xocket\Xocket\obj\Release\net8.0\refint\Xocket.dll
 C:\Users\sheud\Documents\GitHub\Xocket\Xocket\obj\Release\net8.0\Xocket.pdb
 C:\Users\sheud\Documents\GitHub\Xocket\Xocket\obj\Release\net8.0\ref\Xocket.dll
+C:\Users\sheud\Documents\GitHub\Xocket\Xocket\obj\Release\net8.0\Xocket.sourcelink.json

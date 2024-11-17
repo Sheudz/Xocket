@@ -1,58 +1,65 @@
 ﻿using System.Net.Sockets;
 using System.Net;
 using System.Text;
+using System.Collections.Generic;
+using System.Linq;
+using System;
+using System.Threading.Tasks;
+
 namespace Xocket
 {
     public class XocketServer
     {
-        private TcpListener _listener;
+        private TcpListener _tcpListener;
         private bool _isRunning;
-        public int buffersize = 1024;
-        static Dictionary<string, string[]> pendingPackets = new Dictionary<string, string[]>();
-        static Dictionary<string, Tuple<string, TcpClient>> completedPackets = new Dictionary<string, Tuple<string, TcpClient>>();
-
-        static Dictionary<TcpClient, Action> clientDisconnectCallbacks = new Dictionary<TcpClient, Action>();
+        public int BufferSize = 1024;
+        private static Dictionary<string, string[]> PendingPackets = new Dictionary<string, string[]>();
+        private static Dictionary<string, Tuple<string, TcpClient>> CompletedPackets = new Dictionary<string, Tuple<string, TcpClient>>();
+        private static Dictionary<TcpClient, Action> ClientDisconnectCallbacks = new Dictionary<TcpClient, Action>();
 
         public string StartServer(int port)
         {
-            if (port < 0 || port > 65365)
+            if (port < 0 || port > 65535)
             {
-                return "Incorrect port.";
+                return "Invalid port.";
             }
-            if (_isRunning) return "Server already is running.";
+            if (_isRunning) return "Server is already running.";
 
-            _listener = new TcpListener(IPAddress.Any, port);
-            _listener.Start();
+            _tcpListener = new TcpListener(IPAddress.Any, port);
+            _tcpListener.Start();
             _isRunning = true;
 
-            ListenForConnectionsAsync();
-            return "successful";
+            _ = ListenForConnectionsAsync();
+            return "Server started successfully.";
         }
 
         public string StopServer()
         {
-            if (!_isRunning) return "Server doesnt run.";
+            if (!_isRunning) return "Server is not running.";
 
             _isRunning = false;
-            _listener.Stop();
-            return "successful";
+            _tcpListener.Stop();
+            return "Server stopped successfully.";
         }
 
-        public async Task Listen(string? packetid = null, TcpClient? specificClient = null, Func<TcpClient, string, Task> callback = null)
+        public async Task Listen(string? packetId = null, TcpClient? specificClient = null, Func<TcpClient, string, Task> callback = null)
         {
             while (_isRunning)
             {
-                foreach (var packetEntry in completedPackets)
+                foreach (KeyValuePair<string, Tuple<string, TcpClient>> packetEntry in CompletedPackets)
                 {
-                    var packet = packetEntry.Value;
+                    Tuple<string, TcpClient> packet = packetEntry.Value;
 
-                    bool idMatches = packetid == null || packetEntry.Key == packetid;
+                    bool idMatches = packetId == null || packetEntry.Key == packetId;
                     bool clientMatches = specificClient == null || packet.Item2 == specificClient;
 
                     if (idMatches && clientMatches)
                     {
-                        await callback?.Invoke(packet.Item2, packet.Item1);
-                        completedPackets.Remove(packetEntry.Key);
+                        if (callback != null)
+                        {
+                            await callback.Invoke(packet.Item2, packet.Item1);
+                        }
+                        CompletedPackets.Remove(packetEntry.Key);
                         break;
                     }
                 }
@@ -60,57 +67,54 @@ namespace Xocket
             }
         }
 
-        public async Task<string> SendMessage(TcpClient client, string? packetid, string message)
+        public async Task<string> SendMessage(TcpClient client, string? packetId, string message)
         {
             if (client == null || !client.Connected) return "Connection lost.";
-            if (packetid != null && Encoding.UTF8.GetBytes(packetid).Length > buffersize * 0.25)
+            if (packetId != null && Encoding.UTF8.GetBytes(packetId).Length > BufferSize * 0.25)
             {
-                return "Packetid too long.";
+                return "Packet ID is too long.";
             }
             try
             {
-                if (Encoding.UTF8.GetBytes(message).Length + Encoding.UTF8.GetBytes($"singlemessage¶|~{packetid}¶|~").Length > buffersize)
+                byte[] messageBytes = Encoding.UTF8.GetBytes(message);
+                byte[] header = Encoding.UTF8.GetBytes($"singlemessage¶|~{packetId ?? "nullid"}¶|~");
+                if (messageBytes.Length + header.Length > BufferSize)
                 {
                     NetworkStream stream = client.GetStream();
-                    Random random = new Random();
-                    string startmessage;
-                    string dataid = $"id{random.Next(1, 999999999)}";
-                    if (packetid != null) { startmessage = $"startlistening¶|~{dataid}¶|~{packetid}"; }
-                    else { startmessage = $"startlistening¶|~{dataid}¶|~nullid"; }
-                    await stream.WriteAsync(Encoding.UTF8.GetBytes(startmessage), 0, Encoding.UTF8.GetBytes(startmessage).Length);
-                    byte[] messageBytes = Encoding.UTF8.GetBytes(message);
-                    int chunkSize = buffersize - Encoding.UTF8.GetBytes($"appenddata¶|~{dataid}¶|~").Length;
+                    string dataId = Guid.NewGuid().ToString();
+                    string startMessage = $"startlistening¶|~{dataId}¶|~{packetId ?? "nullid"}";
+                    await stream.WriteAsync(Encoding.UTF8.GetBytes(startMessage), 0, Encoding.UTF8.GetBytes(startMessage).Length);
+
+                    int chunkSize = BufferSize - Encoding.UTF8.GetBytes($"appenddata¶|~{dataId}¶|~").Length;
                     int bytesSent = 0;
-                    Thread.Sleep(25);
+
                     while (bytesSent < messageBytes.Length)
                     {
                         int bytesToSend = Math.Min(chunkSize, messageBytes.Length - bytesSent);
-                        var dataToSend = new List<byte>();
-                        dataToSend.AddRange(Encoding.UTF8.GetBytes($"appenddata¶|~{dataid}¶|~"));
-                        dataToSend.AddRange(messageBytes.Skip(bytesSent).Take(bytesToSend));
-                        await stream.WriteAsync(dataToSend.ToArray(), 0, dataToSend.Count);
+                        byte[] chunk = Encoding.UTF8.GetBytes($"appenddata¶|~{dataId}¶|~")
+                            .Concat(messageBytes.Skip(bytesSent).Take(bytesToSend))
+                            .ToArray();
 
+                        await stream.WriteAsync(chunk, 0, chunk.Length);
                         bytesSent += bytesToSend;
                     }
-                    Thread.Sleep(25);
-                    await stream.WriteAsync(Encoding.UTF8.GetBytes($"enddata¶|~{dataid}"), 0, Encoding.UTF8.GetBytes($"enddata¶|~{dataid}").Length);
-                    return "successful";
+
+                    string endMessage = $"enddata¶|~{dataId}";
+                    await stream.WriteAsync(Encoding.UTF8.GetBytes(endMessage), 0, Encoding.UTF8.GetBytes(endMessage).Length);
+
+                    return "Message sent successfully.";
                 }
                 else
                 {
+                    byte[] fullMessage = Encoding.UTF8.GetBytes($"singlemessage¶|~{packetId ?? "nullid"}¶|~{message}");
                     NetworkStream stream = client.GetStream();
-                    string fullmessage;
-                    if (packetid != null) { fullmessage = $"singlemessage¶|~{packetid}¶|~{message}"; }
-                    else { fullmessage = $"singlemessage¶|~nullid¶|~{message}"; }
-                    byte[] data = Encoding.UTF8.GetBytes(fullmessage);
-
-                    await stream.WriteAsync(data, 0, data.Length);
-                    return "successful";
+                    await stream.WriteAsync(fullMessage, 0, fullMessage.Length);
+                    return "Message sent successfully.";
                 }
             }
             catch (Exception ex)
             {
-                return $"Error: {ex}";
+                return $"Error: {ex.Message}";
             }
         }
 
@@ -120,9 +124,9 @@ namespace Xocket
             {
                 while (_isRunning)
                 {
-                    var client = await _listener.AcceptTcpClientAsync();
+                    TcpClient client = await _tcpListener.AcceptTcpClientAsync();
                     client.NoDelay = true;
-                    await HandleClientAsync(client);
+                    _ = HandleClientAsync(client);
                 }
             }
             catch { }
@@ -130,8 +134,8 @@ namespace Xocket
 
         private async Task HandleClientAsync(TcpClient client)
         {
-            var stream = client.GetStream();
-            var buffer = new byte[buffersize];
+            NetworkStream stream = client.GetStream();
+            byte[] buffer = new byte[BufferSize];
 
             try
             {
@@ -141,7 +145,6 @@ namespace Xocket
                     if (bytesRead == 0) break;
 
                     string message = Encoding.UTF8.GetString(buffer, 0, bytesRead);
-
                     try
                     {
                         string[] messageParts = message.Split(new string[] { "¶|~" }, StringSplitOptions.None);
@@ -149,33 +152,33 @@ namespace Xocket
                         {
                             if (messageParts[0] == "singlemessage")
                             {
-                                string command = messageParts[1];
-                                string msg = messageParts[2];
-                                completedPackets[command] = new Tuple<string, TcpClient>(msg, client);
+                                string packetId = messageParts[1];
+                                string payload = messageParts[2];
+                                CompletedPackets[packetId] = Tuple.Create(payload, client);
                             }
                             else if (messageParts[0] == "startlistening")
                             {
-                                string id = messageParts[1];
-                                string command = messageParts[2];
-                                pendingPackets[id] = new string[] { id, command, "" };
+                                string dataId = messageParts[1];
+                                string packetId = messageParts[2];
+                                PendingPackets[dataId] = new string[] { dataId, packetId, "" };
                             }
                             else if (messageParts[0] == "appenddata")
                             {
-                                var packetToUpdate = pendingPackets.FirstOrDefault(p => p.Key == messageParts[1]);
-                                if (packetToUpdate.Value != null)
+                                string dataId = messageParts[1];
+                                if (PendingPackets.TryGetValue(dataId, out string[] packet))
                                 {
-                                    pendingPackets[packetToUpdate.Key][2] += messageParts[2];
+                                    PendingPackets[dataId][2] += messageParts[2];
                                 }
                             }
                             else if (messageParts[0] == "enddata")
                             {
-                                var packet = pendingPackets.FirstOrDefault(p => p.Key == messageParts[1]);
-                                if (packet.Value != null)
+                                string dataId = messageParts[1];
+                                if (PendingPackets.TryGetValue(dataId, out string[] packet))
                                 {
-                                    string command = packet.Value[1];
-                                    string messageData = packet.Value[2];
-                                    completedPackets[command] = new Tuple<string, TcpClient>(messageData, client);
-                                    pendingPackets.Remove(packet.Key);
+                                    string packetId = packet[1];
+                                    string payload = packet[2];
+                                    CompletedPackets[packetId] = Tuple.Create(payload, client);
+                                    PendingPackets.Remove(dataId);
                                 }
                             }
                         }
@@ -187,11 +190,10 @@ namespace Xocket
             finally
             {
                 client.Close();
-
-                if (clientDisconnectCallbacks.ContainsKey(client))
+                if (ClientDisconnectCallbacks.ContainsKey(client))
                 {
-                    clientDisconnectCallbacks[client]?.Invoke();
-                    clientDisconnectCallbacks.Remove(client);
+                    ClientDisconnectCallbacks[client]?.Invoke();
+                    ClientDisconnectCallbacks.Remove(client);
                 }
             }
         }
@@ -200,7 +202,7 @@ namespace Xocket
         {
             if (client != null)
             {
-                clientDisconnectCallbacks[client] = callback;
+                ClientDisconnectCallbacks[client] = callback;
             }
         }
     }

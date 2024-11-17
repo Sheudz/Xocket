@@ -3,6 +3,10 @@
   "WorkspaceRootPath": "C:\\Users\\sheud\\Documents\\GitHub\\Xocket\\Xocket\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{C17893EA-FFCD-48C7-8C87-05A68E482ADB}|Xocket.csproj|c:\\users\\sheud\\documents\\github\\xocket\\xocket\\client.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{C17893EA-FFCD-48C7-8C87-05A68E482ADB}|Xocket.csproj|solutionrelative:client.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{C17893EA-FFCD-48C7-8C87-05A68E482ADB}|Xocket.csproj|c:\\users\\sheud\\documents\\github\\xocket\\xocket\\server.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{C17893EA-FFCD-48C7-8C87-05A68E482ADB}|Xocket.csproj|solutionrelative:server.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
@@ -19,12 +23,25 @@
             {
               "$type": "Document",
               "DocumentIndex": 0,
+              "Title": "Client.cs",
+              "DocumentMoniker": "C:\\Users\\sheud\\Documents\\GitHub\\Xocket\\Xocket\\Client.cs",
+              "RelativeDocumentMoniker": "Client.cs",
+              "ToolTip": "C:\\Users\\sheud\\Documents\\GitHub\\Xocket\\Xocket\\Client.cs",
+              "RelativeToolTip": "Client.cs",
+              "ViewState": "AQIAAAEAAAAAAAAAAAAkwBEAAAAAAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-11-17T15:05:39.354Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
               "Title": "Server.cs",
               "DocumentMoniker": "C:\\Users\\sheud\\Documents\\GitHub\\Xocket\\Xocket\\Server.cs",
               "RelativeDocumentMoniker": "Server.cs",
               "ToolTip": "C:\\Users\\sheud\\Documents\\GitHub\\Xocket\\Xocket\\Server.cs",
               "RelativeToolTip": "Server.cs",
-              "ViewState": "AQIAAJwAAAAAAAAAAAAmwM4AAAABAAAA",
+              "ViewState": "AQIAAH8AAAAAAAAAAAAiwLwAAAAVAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2024-11-16T10:08:27.592Z",
               "EditorCaption": ""
