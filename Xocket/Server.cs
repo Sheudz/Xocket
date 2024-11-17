@@ -1,14 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Linq.Expressions;
+﻿using System.Net.Sockets;
 using System.Net;
-using System.Net.Sockets;
-using System.Security.Cryptography;
 using System.Text;
-using System.Threading.Tasks;
-using static System.Runtime.InteropServices.JavaScript.JSType;
-
 namespace Xocket
 {
     public class XocketServer
@@ -18,6 +10,8 @@ namespace Xocket
         public int buffersize = 1024;
         static Dictionary<string, string[]> pendingPackets = new Dictionary<string, string[]>();
         static Dictionary<string, Tuple<string, TcpClient>> completedPackets = new Dictionary<string, Tuple<string, TcpClient>>();
+
+        static Dictionary<TcpClient, Action> clientDisconnectCallbacks = new Dictionary<TcpClient, Action>();
 
         public string StartServer(int port)
         {
@@ -65,6 +59,7 @@ namespace Xocket
                 await Task.Delay(100);
             }
         }
+
         public async Task<string> SendMessage(TcpClient client, string? packetid, string message)
         {
             if (client == null || !client.Connected) return "Connection lost.";
@@ -152,39 +147,35 @@ namespace Xocket
                         string[] messageParts = message.Split(new string[] { "¶|~" }, StringSplitOptions.None);
                         if (messageParts.Length > 0)
                         {
-                            if (messageParts.Length > 0)
+                            if (messageParts[0] == "singlemessage")
                             {
-
-                                if (messageParts[0] == "singlemessage")
+                                string command = messageParts[1];
+                                string msg = messageParts[2];
+                                completedPackets[command] = new Tuple<string, TcpClient>(msg, client);
+                            }
+                            else if (messageParts[0] == "startlistening")
+                            {
+                                string id = messageParts[1];
+                                string command = messageParts[2];
+                                pendingPackets[id] = new string[] { id, command, "" };
+                            }
+                            else if (messageParts[0] == "appenddata")
+                            {
+                                var packetToUpdate = pendingPackets.FirstOrDefault(p => p.Key == messageParts[1]);
+                                if (packetToUpdate.Value != null)
                                 {
-                                    string command = messageParts[1];
-                                    string msg = messageParts[2];
-                                    completedPackets[command] = new Tuple<string, TcpClient>(msg, client);
+                                    pendingPackets[packetToUpdate.Key][2] += messageParts[2];
                                 }
-                                else if (messageParts[0] == "startlistening")
+                            }
+                            else if (messageParts[0] == "enddata")
+                            {
+                                var packet = pendingPackets.FirstOrDefault(p => p.Key == messageParts[1]);
+                                if (packet.Value != null)
                                 {
-                                    string id = messageParts[1];
-                                    string command = messageParts[2];
-                                    pendingPackets[id] = new string[] { id, command, "" };
-                                }
-                                else if (messageParts[0] == "appenddata")
-                                {
-                                    var packetToUpdate = pendingPackets.FirstOrDefault(p => p.Key == messageParts[1]);
-                                    if (packetToUpdate.Value != null)
-                                    {
-                                        pendingPackets[packetToUpdate.Key][2] += messageParts[2];
-                                    }
-                                }
-                                else if (messageParts[0] == "enddata")
-                                {
-                                    var packet = pendingPackets.FirstOrDefault(p => p.Key == messageParts[1]);
-                                    if (packet.Value != null)
-                                    {
-                                        string command = packet.Value[1];
-                                        string messageData = packet.Value[2];
-                                        completedPackets[command] = new Tuple<string, TcpClient>(messageData, client);
-                                        pendingPackets.Remove(packet.Key);
-                                    }
+                                    string command = packet.Value[1];
+                                    string messageData = packet.Value[2];
+                                    completedPackets[command] = new Tuple<string, TcpClient>(messageData, client);
+                                    pendingPackets.Remove(packet.Key);
                                 }
                             }
                         }
@@ -196,6 +187,20 @@ namespace Xocket
             finally
             {
                 client.Close();
+
+                if (clientDisconnectCallbacks.ContainsKey(client))
+                {
+                    clientDisconnectCallbacks[client]?.Invoke();
+                    clientDisconnectCallbacks.Remove(client);
+                }
+            }
+        }
+
+        public void OnDisconnect(TcpClient client, Action callback)
+        {
+            if (client != null)
+            {
+                clientDisconnectCallbacks[client] = callback;
             }
         }
     }

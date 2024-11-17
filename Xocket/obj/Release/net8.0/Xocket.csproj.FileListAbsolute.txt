@@ -9,3 +9,14 @@ D:\Xocket\obj\Release\net8.0\Xocket.dll
 D:\Xocket\obj\Release\net8.0\refint\Xocket.dll
 D:\Xocket\obj\Release\net8.0\Xocket.pdb
 D:\Xocket\obj\Release\net8.0\ref\Xocket.dll
+C:\Users\sheud\Documents\GitHub\Xocket\Xocket\bin\Release\net8.0\Xocket.deps.json
+C:\Users\sheud\Documents\GitHub\Xocket\Xocket\bin\Release\net8.0\Xocket.dll
+C:\Users\sheud\Documents\GitHub\Xocket\Xocket\bin\Release\net8.0\Xocket.pdb
+C:\Users\sheud\Documents\GitHub\Xocket\Xocket\obj\Release\net8.0\Xocket.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\sheud\Documents\GitHub\Xocket\Xocket\obj\Release\net8.0\Xocket.AssemblyInfoInputs.cache
+C:\Users\sheud\Documents\GitHub\Xocket\Xocket\obj\Release\net8.0\Xocket.AssemblyInfo.cs
+C:\Users\sheud\Documents\GitHub\Xocket\Xocket\obj\Release\net8.0\Xocket.csproj.CoreCompileInputs.cache
+C:\Users\sheud\Documents\GitHub\Xocket\Xocket\obj\Release\net8.0\Xocket.dll
+C:\Users\sheud\Documents\GitHub\Xocket\Xocket\obj\Release\net8.0\refint\Xocket.dll
+C:\Users\sheud\Documents\GitHub\Xocket\Xocket\obj\Release\net8.0\Xocket.pdb
+C:\Users\sheud\Documents\GitHub\Xocket\Xocket\obj\Release\net8.0\ref\Xocket.dll

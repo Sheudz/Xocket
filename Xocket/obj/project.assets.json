@@ -13,11 +13,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "D:\\Xocket\\Xocket.csproj",
+      "projectUniqueName": "C:\\Users\\sheud\\Documents\\GitHub\\Xocket\\Xocket\\Xocket.csproj",
       "projectName": "Xocket",
-      "projectPath": "D:\\Xocket\\Xocket.csproj",
+      "projectPath": "C:\\Users\\sheud\\Documents\\GitHub\\Xocket\\Xocket\\Xocket.csproj",
       "packagesPath": "C:\\Users\\sheud\\.nuget\\packages\\",
-      "outputPath": "D:\\Xocket\\obj\\",
+      "outputPath": "C:\\Users\\sheud\\Documents\\GitHub\\Xocket\\Xocket\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "C:\\Users\\sheud\\AppData\\Roaming\\NuGet\\NuGet.Config",
