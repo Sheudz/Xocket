@@ -95,8 +95,7 @@ namespace Xocket
                     }
                     await Task.Delay(100);
                 }
-            }
-            catch { }
+            } catch { }
         }
 
         public async Task<Result> SendMessage(TcpClient client, string? packetId, string message)
