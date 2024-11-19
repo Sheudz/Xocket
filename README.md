@@ -158,6 +158,20 @@ Result result = server.StopServer();
 Console.WriteLine(result.Success, result.Message);
 ```    
 
+## SetBufferSize(int? size)
+### Configures the buffer size for packet handling.
+#### Parameters:
+    - `size` (nullable int): Desired buffer size in bytes. If null, defaults to 1024. Must be between 64 and 4096
+#### Returns:
+- Result class
+    - Success: "Success."
+    - Failure: "Buffer size is too small." or "Buffer size is too large."
+#### Example:
+```c#
+Result result = server.StopServer();
+Console.WriteLine(result.Success, result.Message);
+```
+
 # License
 Xocket is licensed under the MIT License. See the LICENSE file for details.
 
