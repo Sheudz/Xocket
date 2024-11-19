@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using System.IO;
 
 namespace Xocket
 {
@@ -67,7 +68,7 @@ namespace Xocket
         public async Task<string> SendMessage(string? packetId, string message)
         {
             if (_client == null || !_client.Connected) return "Connection lost.";
-            if (packetId != null && Encoding.UTF8.GetBytes(packetId).Length > BufferSize * 0.25)
+            if (packetId != null && Encoding.UTF8.GetBytes(packetId).Length > BufferSize * 0.30)
             {
                 return "Packet ID is too long.";
             }
@@ -77,37 +78,37 @@ namespace Xocket
                 byte[] messageBytes = Encoding.UTF8.GetBytes(message);
                 byte[] header = Encoding.UTF8.GetBytes($"singlemessage¶|~{packetId ?? "nullid"}¶|~");
 
-                if (messageBytes.Length + header.Length > BufferSize)
+                if (4 + messageBytes.Length + header.Length > BufferSize)
                 {
                     string dataId = Guid.NewGuid().ToString();
-                    string startMessage = $"startlistening¶|~{dataId}¶|~{packetId ?? "nullid"}";
-                    byte[] startMessageBytes = Encoding.UTF8.GetBytes(startMessage);
+                    string startMessage = $"{Encoding.UTF8.GetBytes($"startlistening¶|~{dataId}¶|~{packetId ?? "nullid"}").Length.ToString("D4")}startlistening¶|~{dataId}¶|~{packetId ?? "nullid"}";
 
-                    await _stream.WriteAsync(startMessageBytes, 0, startMessageBytes.Length);
+                    await _stream.WriteAsync(Encoding.UTF8.GetBytes(startMessage), 0, Encoding.UTF8.GetBytes(startMessage).Length);
 
-                    int chunkSize = BufferSize - Encoding.UTF8.GetBytes($"appenddata¶|~{dataId}¶|~").Length;
+                    int chunkSize = BufferSize - Encoding.UTF8.GetBytes($"appenddata¶|~{dataId}¶|~").Length - 4;
                     int bytesSent = 0;
-                    Thread.Sleep(50);
+                    
                     while (bytesSent < messageBytes.Length)
                     {
                         int bytesToSend = Math.Min(chunkSize, messageBytes.Length - bytesSent);
                         byte[] chunk = Encoding.UTF8.GetBytes($"appenddata¶|~{dataId}¶|~")
                             .Concat(messageBytes.Skip(bytesSent).Take(bytesToSend))
                             .ToArray();
-
-                        await _stream.WriteAsync(chunk, 0, chunk.Length);
+                        byte[] chunkLength = Encoding.UTF8.GetBytes(chunk.Length.ToString("D4"));
+                        byte[] appendmessage = chunkLength.Concat(chunk).ToArray();
+                        await _stream.WriteAsync(appendmessage, 0, appendmessage.Length);
                         bytesSent += bytesToSend;
                     }
-                    Thread.Sleep(50);
-                    string endMessage = $"enddata¶|~{dataId}";
-                    byte[] endMessageBytes = Encoding.UTF8.GetBytes(endMessage);
-                    await _stream.WriteAsync(endMessageBytes, 0, endMessageBytes.Length);
+
+                    string endMessage = Encoding.UTF8.GetBytes($"enddata¶|~{dataId}").Length.ToString("D4") + $"enddata¶|~{dataId}";
+                    await _stream.WriteAsync(Encoding.UTF8.GetBytes(endMessage), 0, Encoding.UTF8.GetBytes(endMessage).Length);
 
                     return "Message sent successfully.";
                 }
                 else
                 {
-                    byte[] fullMessage = Encoding.UTF8.GetBytes($"singlemessage¶|~{packetId ?? "nullid"}¶|~{message}");
+                    int size = Encoding.UTF8.GetBytes($"singlemessage¶|~{packetId ?? "nullid"}¶|~{message}").Length;
+                    byte[] fullMessage = Encoding.UTF8.GetBytes($"{size.ToString("D4")}singlemessage¶|~{packetId ?? "nullid"}¶|~{message}");
                     await _stream.WriteAsync(fullMessage, 0, fullMessage.Length);
                     return "Message sent successfully.";
                 }
@@ -126,7 +127,14 @@ namespace Xocket
             {
                 while (_client.Connected)
                 {
-                    int bytesRead = await _stream.ReadAsync(buffer, 0, buffer.Length);
+                    int bytesRead = await _stream.ReadAsync(buffer, 0, 4);
+                    if (bytesRead == 0) break;
+
+                    string messageSizeStr = Encoding.UTF8.GetString(buffer, 0, 4);
+                    if (!int.TryParse(messageSizeStr, out int messageSize)) continue;
+                    if (messageSize <= 0 || messageSize > BufferSize) continue;
+
+                    bytesRead = await _stream.ReadAsync(buffer, 0, messageSize);
                     if (bytesRead == 0) break;
 
                     string message = Encoding.UTF8.GetString(buffer, 0, bytesRead);

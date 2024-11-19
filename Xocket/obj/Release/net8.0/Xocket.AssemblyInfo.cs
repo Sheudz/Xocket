@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Xocket")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+5571632527691f6bf4709cff27ea52019f8dacf4")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+66a19de9053ad6e81a62c9ae70fa326c90ba4599")]
 [assembly: System.Reflection.AssemblyProductAttribute("Xocket")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Xocket")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
