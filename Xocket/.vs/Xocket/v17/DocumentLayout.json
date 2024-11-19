@@ -9,6 +9,10 @@
     {
       "AbsoluteMoniker": "D:0:0:{C17893EA-FFCD-48C7-8C87-05A68E482ADB}|Xocket.csproj|c:\\users\\sheud\\documents\\github\\xocket\\xocket\\client.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{C17893EA-FFCD-48C7-8C87-05A68E482ADB}|Xocket.csproj|solutionrelative:client.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{C17893EA-FFCD-48C7-8C87-05A68E482ADB}|Xocket.csproj|c:\\users\\sheud\\documents\\github\\xocket\\xocket\\result.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{C17893EA-FFCD-48C7-8C87-05A68E482ADB}|Xocket.csproj|solutionrelative:result.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -18,8 +22,21 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 1,
+          "SelectedChildIndex": 2,
           "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "Result.cs",
+              "DocumentMoniker": "C:\\Users\\sheud\\Documents\\GitHub\\Xocket\\Xocket\\Result.cs",
+              "RelativeDocumentMoniker": "Result.cs",
+              "ToolTip": "C:\\Users\\sheud\\Documents\\GitHub\\Xocket\\Xocket\\Result.cs",
+              "RelativeToolTip": "Result.cs",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAAA4AAAAJAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-11-19T17:37:59.826Z",
+              "EditorCaption": ""
+            },
             {
               "$type": "Document",
               "DocumentIndex": 1,
@@ -28,7 +45,7 @@
               "RelativeDocumentMoniker": "Client.cs",
               "ToolTip": "C:\\Users\\sheud\\Documents\\GitHub\\Xocket\\Xocket\\Client.cs",
               "RelativeToolTip": "Client.cs",
-              "ViewState": "AQIAAJkAAAAAAAAAAAAmwIUAAABVAAAA",
+              "ViewState": "AQIAALoAAAAAAAAAAAAmwMAAAAAhAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2024-11-17T15:05:39.354Z",
               "EditorCaption": ""
@@ -41,7 +58,7 @@
               "RelativeDocumentMoniker": "Server.cs",
               "ToolTip": "C:\\Users\\sheud\\Documents\\GitHub\\Xocket\\Xocket\\Server.cs",
               "RelativeToolTip": "Server.cs",
-              "ViewState": "AQIAAJUAAAAAAAAAAAASwKgAAABTAAAA",
+              "ViewState": "AQIAAEAAAAAAAAAAAADwv2IAAAAVAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2024-11-16T10:08:27.592Z",
               "EditorCaption": ""

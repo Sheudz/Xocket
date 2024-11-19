@@ -18,7 +18,7 @@ namespace Xocket
         private static Dictionary<string, string> CompletedPackets = new Dictionary<string, string>();
         private bool _isRunning = true;
 
-        public string Connect(string host, int port)
+        public Result Connect(string host, int port)
         {
             try
             {
@@ -26,15 +26,15 @@ namespace Xocket
                 _client.Connect(host, port);
                 _stream = _client.GetStream();
                 StartListening();
-                return "Connection established successfully.";
+                return Result.Ok("Connection established successfully.");
             }
             catch (Exception ex)
             {
-                return $"Error: {ex.Message}";
+                return Result.Fail($"Error: {ex.Message}");
             }
         }
 
-        public string Disconnect()
+        public Result Disconnect()
         {
             try
             {
@@ -44,33 +44,33 @@ namespace Xocket
                 if (_client != null)
                     _client.Close();
 
-                return "Disconnected successfully.";
+                return Result.Ok("Disconnected successfully.");
             }
             catch (Exception ex)
             {
-                return $"Error: {ex.Message}";
+                return Result.Fail($"Error: {ex.Message}");
             }
         }
-        public string SetBufferSize(int? size)
+        public Result SetBufferSize(int? size)
         {
             if (BufferSize < 64)
             {
-                return "Buffer size is too small.";
+                return Result.Fail("Buffer size is too small.");
             }
             else if (BufferSize > 4096)
             {
-                return "Buffer size is too large.";
+                return Result.Fail("Buffer size is too large.");
             }
             BufferSize = size ?? 1024;
-            return "successfully.";
+            return Result.Ok();
         }
 
-        public async Task<string> SendMessage(string? packetId, string message)
+        public async Task<Result> SendMessage(string? packetId, string message)
         {
-            if (_client == null || !_client.Connected) return "Connection lost.";
+            if (_client == null || !_client.Connected) return Result.Fail("Connection lost.");
             if (packetId != null && Encoding.UTF8.GetBytes(packetId).Length > BufferSize * 0.30)
             {
-                return "Packet ID is too long.";
+                return Result.Fail("Packet ID is too long.");
             }
 
             try
@@ -103,19 +103,19 @@ namespace Xocket
                     string endMessage = Encoding.UTF8.GetBytes($"enddata¶|~{dataId}").Length.ToString("D4") + $"enddata¶|~{dataId}";
                     await _stream.WriteAsync(Encoding.UTF8.GetBytes(endMessage), 0, Encoding.UTF8.GetBytes(endMessage).Length);
 
-                    return "Message sent successfully.";
+                    return Result.Ok("Message sent successfully.");
                 }
                 else
                 {
                     int size = Encoding.UTF8.GetBytes($"singlemessage¶|~{packetId ?? "nullid"}¶|~{message}").Length;
                     byte[] fullMessage = Encoding.UTF8.GetBytes($"{size.ToString("D4")}singlemessage¶|~{packetId ?? "nullid"}¶|~{message}");
                     await _stream.WriteAsync(fullMessage, 0, fullMessage.Length);
-                    return "Message sent successfully.";
+                    return Result.Ok("Message sent successfully.");
                 }
             }
             catch (Exception ex)
             {
-                return $"Error: {ex.Message}";
+                return Result.Fail($"Failed to send message: {ex.Message}");
             }
         }
 
@@ -190,27 +190,35 @@ namespace Xocket
             }
         }
 
-        public async Task Listen(string? packetId = null, Func<string, string, Task> callback = null)
+        public async Task<Result> Listen(string? packetId = null, Func<string, string, Task> callback = null)
         {
-            while (_isRunning)
+            try
             {
-                foreach (KeyValuePair<string, string> packetEntry in CompletedPackets)
+                while (_isRunning)
                 {
-                    string packet = packetEntry.Value;
-
-                    bool idMatches = packetId == null || packetEntry.Key == packetId;
-
-                    if (idMatches)
+                    foreach (KeyValuePair<string, string> packetEntry in CompletedPackets)
                     {
-                        if (callback != null)
+                        string packet = packetEntry.Value;
+
+                        bool idMatches = packetId == null || packetEntry.Key == packetId;
+
+                        if (idMatches)
                         {
-                            await callback.Invoke(packetEntry.Key, packet);
+                            if (callback != null)
+                            {
+                                await callback.Invoke(packetEntry.Key, packet);
+                            }
+                            CompletedPackets.Remove(packetEntry.Key);
+                            break;
                         }
-                        CompletedPackets.Remove(packetEntry.Key);
-                        break;
                     }
+                    await Task.Delay(100);
                 }
-                await Task.Delay(100);
+                return Result.Ok("Listening for messages.");
+            }
+            catch (Exception ex)
+            {
+                return Result.Fail($"Failed to start listening: {ex.Message}");
             }
         }
     }
