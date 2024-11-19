@@ -12,7 +12,7 @@ namespace Xocket
     {
         private TcpListener _tcpListener;
         private bool _isRunning;
-        public int BufferSize = 1024;
+        public int BufferSize { get; private set; } = 1024;
         private static Dictionary<string, string[]> PendingPackets = new Dictionary<string, string[]>();
         private static Dictionary<string, Tuple<string, TcpClient>> CompletedPackets = new Dictionary<string, Tuple<string, TcpClient>>();
         private static Dictionary<TcpClient, Action> ClientDisconnectCallbacks = new Dictionary<TcpClient, Action>();
@@ -40,6 +40,19 @@ namespace Xocket
             _isRunning = false;
             _tcpListener.Stop();
             return "Server stopped successfully.";
+        }
+        public string SetBufferSize(int? size)
+        {
+            if (BufferSize < 64)
+            {
+                return "Buffer size is too small.";
+            }
+            else if (BufferSize > 4096)
+            {
+                return "Buffer size is too large.";
+            }
+            BufferSize = size ?? 1024;
+            return "successfully.";
         }
 
         public async Task Listen(string? packetId = null, TcpClient? specificClient = null, Func<TcpClient, string, Task> callback = null)
@@ -87,7 +100,7 @@ namespace Xocket
 
                     int chunkSize = BufferSize - Encoding.UTF8.GetBytes($"appenddata¶|~{dataId}¶|~").Length;
                     int bytesSent = 0;
-
+                    Thread.Sleep(50);
                     while (bytesSent < messageBytes.Length)
                     {
                         int bytesToSend = Math.Min(chunkSize, messageBytes.Length - bytesSent);
@@ -98,7 +111,7 @@ namespace Xocket
                         await stream.WriteAsync(chunk, 0, chunk.Length);
                         bytesSent += bytesToSend;
                     }
-
+                    Thread.Sleep(1000);
                     string endMessage = $"enddata¶|~{dataId}";
                     await stream.WriteAsync(Encoding.UTF8.GetBytes(endMessage), 0, Encoding.UTF8.GetBytes(endMessage).Length);
 
