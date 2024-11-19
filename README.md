@@ -14,7 +14,7 @@
 
 # Examples
 
-## Xocket Server:
+### Xocket Server:
 ```c#
 using System;
 using System.Net.Sockets;
@@ -55,7 +55,7 @@ namespace XocketTestServer
 }
 
 ```
-# Xocket Client:
+### Xocket Client:
 ```c#
 using System;
 using System.Linq;
@@ -105,7 +105,7 @@ namespace XocketTestClient
 
 # Creating an Instance of XocketServer or XocketClient
 The Xocket library provides two primary classes: XocketServer for hosting a server and XocketClient for connecting as a client. Below are step-by-step guides for creating instances of each class.
-## Creating a XocketServer Instance
+### Creating a XocketServer Instance
 The XocketServer class is used to create a TCP server that listens for client connections and processes incoming packets.
 ```c#
 using Xocket;
@@ -117,7 +117,7 @@ class Program
     }
 }
 ```
-## Creating a XocketClient Instance
+### Creating a XocketClient Instance
 The XocketClient class is used to create a TCP client that connects to a server and exchanges messages.
 ```c#
 using Xocket;
@@ -145,7 +145,7 @@ Result result = server.StartServer(8080);
 Console.WriteLine(result.Success, result.Message);
 ```
 
-## StopServer()
+## StopServer()       (SERVER ONLY)
 ### Starts the TCP server on a specified port.
 #### Parameters: None.
 #### Returns:
