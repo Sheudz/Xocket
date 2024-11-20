@@ -225,10 +225,26 @@ Console.WriteLine(result.Success, result.Message);
 #### Returns:
 - Result class
     - Success: `Message sent successfully.`
-    - Failure: `Connection lost.`, `Packet ID is too long.`, or an exception message.
+    - Failure: `Connection lost.`, `Packet ID is too long.`, `Failed to send message: {ex.Message}`.
 #### Example:
 ```c#
 Result result = await client.SendMessage("12345", "Hello, World!");
+Console.WriteLine(result.Message);
+```
+
+## SendMessage(TcpClient client, string? packetId, string message) (FOR SERVER)
+### Asynchronously sends a message to the specific client, optionally with a packet ID. If the message exceeds the buffer size, it is split into chunks and sent incrementally.
+#### Parameters:
+- `client` (TcpClient): client to whom the message will be sent
+- `packetId` (string?): An optional identifier for the packet. If not provided, defaults to "nullid"
+- `message` (string): The message content to be sent.
+#### Returns:
+- Result class
+    - Success: `Message sent successfully.`
+    - Failure: `Connection lost.`, `Packet ID is too long.`, `Failed to send message: {ex.Message}`.
+#### Example:
+```c#
+Result result = await server.SendMessage(client, "12345", "Hello, World!");
 Console.WriteLine(result.Message);
 ```
 
