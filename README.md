@@ -260,6 +260,22 @@ server.OnDisconnect(client, () =>
     Console.WriteLine($"Client {client.Client.RemoteEndPoint} has disconnected.");
 });
 ```
+## Listen(string? packetId = null, TcpClient? specificClient = null, Func<TcpClient, string, Task> callback = null) (FOR SERVER)
+### This asynchronous method listens for incoming messages and triggers a provided callback when specific packets are completed, based on a packet ID, a specific client, or both. The method continuously checks for completed packets and, when a match is found according to the filtering criteria, invokes the callback and removes the processed packet. This serves as an event handler for handling completed packets.
+#### Parameters:
+- `packetId` (string?) This is an optional parameter used to filter packets by their unique identifier. If you want to listen for messages from a specific packet, you can provide its packetId.
+- `specificClient` (TcpClient?) This is an optional parameter that allows you to filter packets by a specific client. If you want to only process packets from a certain client, you can provide its TcpClient instance.
+- `callback` (Func<TcpClient, string, Task>) This is an optional asynchronous callback function that is invoked when a matching packet is found.
+#### Callback receives:
+- `TcpClient`: The client (TcpClient) that sent the packet.
+- `string`: The packet's content (message or data).
+#### Examples:
+```c#
+await server.Listen("packetid123", callback: async (client, packet) =>
+{
+    Console.WriteLine($"Received packet {packet} from client {client.Client.RemoteEndPoint}");
+});
+```
 
 # License
 Xocket is licensed under the MIT License. See the LICENSE file for details.
