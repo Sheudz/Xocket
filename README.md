@@ -129,34 +129,79 @@ class Program
     }
 }
 ```
-# Methods
+# Methods Overview
 
-## StartServer(int port)       (SERVER ONLY)
+## StartServer(int port) (SERVER ONLY)
 ### Starts the TCP server on a specified port.
 #### Parameters:
 - `port` (int): The port number to bind the server to. Must be between 0 and 65535.
 #### Returns:
 - Result class
-    - Success: "Server started successfully."
-    - Failure: "Invalid port.", "Server is already running.", or any exception message.
+    - Success: `Server started successfully.`
+    - Failure: `Invalid port.", "Server is already running.", or any exception message.`
 #### Example:
 ```c#
 Result result = server.StartServer(8080);
 Console.WriteLine(result.Success, result.Message);
 ```
 
-## StopServer()       (SERVER ONLY)
+## StopServer() (SERVER ONLY)
 ### Starts the TCP server on a specified port.
 #### Parameters: None.
 #### Returns:
 - Result class
-    - Success: "Server stopped successfully."
-    - Failure: "Server is not running." or any exception message.
+    - Success: `Server stopped successfully.`
+    - Failure: `Server is not running." or any exception message.`
 #### Example:
 ```c#
 Result result = server.StopServer();
 Console.WriteLine(result.Success, result.Message);
-```    
+```
+
+## Connect(string host, int port) (CLIENT ONLY)
+### Establishes a connection to a remote TCP server.
+#### Parameters:
+- `host` (string): The hostname or IP address of the server.
+- `port` (int): The port number of the server. Must be between `0` and `65535`.
+#### Returns:
+- Result class
+    - Success: `Connection established successfully.`
+    - Failure: `Error: {exception message}`
+#### Example:
+```c#
+Result result = client.Connect("127.0.0.1", 8080);
+if (result.Success)
+{
+    Console.WriteLine("Connected to the server.");
+}
+else
+{
+    Console.WriteLine($"Failed to connect: {result.Message}");
+}
+
+```
+
+## Disconnect() (CLIENT ONLY)
+### Terminates the connection to the remote TCP server.
+#### Parameters:
+- `host` (string): The hostname or IP address of the server.
+- `port` (int): The port number of the server. Must be between `0` and `65535`.
+#### Returns:
+- Result class
+    - Success: `Disconnected successfully.`
+    - Failure: `Error: {exception message}`
+#### Example:
+```c#
+Result result = client.Connect("127.0.0.1", 8080);
+if (result.Success)
+{
+    Console.WriteLine("Connected to the server.");
+}
+else
+{
+    Console.WriteLine($"Failed to connect: {result.Message}");
+}
+```
 
 ## SetBufferSize(int? size)
 ### Configures the buffer size for packet handling.
@@ -164,12 +209,27 @@ Console.WriteLine(result.Success, result.Message);
 - `size` (nullable int): Desired buffer size in bytes. If null, defaults to 1024. Must be between 64 and 4096
 #### Returns:
 - Result class
-    - Success: "Success."
-    - Failure: "Buffer size is too small." or "Buffer size is too large."
+    - Success: `Success.`
+    - Failure: `Buffer size is too small." or "Buffer size is too large.`
 #### Example:
 ```c#
 Result result = server.StopServer();
 Console.WriteLine(result.Success, result.Message);
+```
+
+## SendMessage(string? packetId, string message) (FOR CLIENT)
+### Asynchronously sends a message to the connected server, optionally with a packet ID. If the message exceeds the buffer size, it is split into chunks and sent incrementally.
+#### Parameters:
+- `packetId` (string?): An optional identifier for the packet. If not provided, defaults to "nullid"
+- `message` (string): The message content to be sent.
+#### Returns:
+- Result class
+    - Success: `Message sent successfully.`
+    - Failure: `Connection lost.`, `Packet ID is too long.`, or an exception message.
+#### Example:
+```c#
+Result result = await client.SendMessage("12345", "Hello, World!");
+Console.WriteLine(result.Message);
 ```
 
 # License
