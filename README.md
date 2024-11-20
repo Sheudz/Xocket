@@ -260,8 +260,9 @@ server.OnDisconnect(client, () =>
     Console.WriteLine($"Client {client.Client.RemoteEndPoint} has disconnected.");
 });
 ```
+
 ## Listen(string? packetId = null, TcpClient? specificClient = null, Func<TcpClient, string, Task> callback = null) (FOR SERVER)
-### This asynchronous method listens for incoming messages and triggers a provided callback when specific packets are completed, based on a packet ID, a specific client, or both. The method continuously checks for completed packets and, when a match is found according to the filtering criteria, invokes the callback and removes the processed packet. This serves as an event handler for handling completed packets.
+### This asynchronous method listens for incoming messages and triggers a provided callback when specific packets are completed, based on a packet ID, a specific client, or both.
 #### Parameters:
 - `packetId` (string?) This is an optional parameter used to filter packets by their unique identifier. If you want to listen for messages from a specific packet, you can provide its packetId.
 - `specificClient` (TcpClient?) This is an optional parameter that allows you to filter packets by a specific client. If you want to only process packets from a certain client, you can provide its TcpClient instance.
@@ -274,6 +275,21 @@ server.OnDisconnect(client, () =>
 await server.Listen("packetid123", callback: async (client, packet) =>
 {
     Console.WriteLine($"Received packet {packet} from client {client.Client.RemoteEndPoint}");
+});
+```
+
+## Listen(string? packetId = null, Func<string, string, Task> callback = null) (FOR CLIENT)
+### This asynchronous method listens for completed packets and invokes the provided callback when a matching packet is found, based on the optional packetId filter.
+#### Parameters:
+- `packetId` (string?) This is an optional parameter used to filter packets by their unique identifier. If you want to listen for messages from a specific packet, you can provide its packetId.
+- `callback` (Func<string, Task>) This is an optional asynchronous callback function that is invoked when a matching packet is found.
+#### Callback receives:
+- `string`: The packet's content (message or data).
+#### Examples:
+```c#
+await client.Listen("packet123", async (packet) =>
+{
+    Console.WriteLine($"Received packet: {packet}");
 });
 ```
 
