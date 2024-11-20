@@ -161,8 +161,7 @@ namespace Xocket
                     client.NoDelay = true;
                     _ = HandleClientAsync(client);
                 }
-            }
-            catch { }
+            } catch { }
         }
 
         private async Task HandleClientAsync(TcpClient client)

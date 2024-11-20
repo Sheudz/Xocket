@@ -179,18 +179,16 @@ namespace Xocket
                                 }
                             }
                         }
-                    }
-                    catch { }
+                    } catch {}
                 }
-            }
-            catch { }
+            } catch {}
             finally
             {
                 _client.Close();
             }
         }
 
-        public async Task<Result> Listen(string? packetId = null, Func<string, string, Task> callback = null)
+        public async Task Listen(string? packetId = null, Func<string, Task> callback = null)
         {
             try
             {
@@ -206,7 +204,7 @@ namespace Xocket
                         {
                             if (callback != null)
                             {
-                                await callback.Invoke(packetEntry.Key, packet);
+                                await callback.Invoke(packet);
                             }
                             CompletedPackets.Remove(packetEntry.Key);
                             break;
@@ -214,12 +212,9 @@ namespace Xocket
                     }
                     await Task.Delay(100);
                 }
-                return Result.Ok("Listening for messages.");
             }
-            catch (Exception ex)
-            {
-                return Result.Fail($"Failed to start listening: {ex.Message}");
-            }
+            catch {}
         }
+
     }
 }
