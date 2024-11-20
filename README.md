@@ -147,7 +147,7 @@ Console.WriteLine(result.Success, result.Message);
 
 ## StopServer() (SERVER ONLY)
 ### Starts the TCP server on a specified port.
-#### Parameters: None.
+#### Parameters: `None.`
 #### Returns:
 - Result class
     - Success: `Server stopped successfully.`
@@ -183,9 +183,7 @@ else
 
 ## Disconnect() (CLIENT ONLY)
 ### Terminates the connection to the remote TCP server.
-#### Parameters:
-- `host` (string): The hostname or IP address of the server.
-- `port` (int): The port number of the server. Must be between `0` and `65535`.
+#### Parameters: `None.`
 #### Returns:
 - Result class
     - Success: `Disconnected successfully.`
@@ -246,6 +244,21 @@ Console.WriteLine(result.Message);
 ```c#
 Result result = await server.SendMessage(client, "12345", "Hello, World!");
 Console.WriteLine(result.Message);
+```
+
+# Event Handler Registrator
+## OnDisconnect() (SERVER ONLY)
+### The OnDisconnect method acts as an event handler registrar. This means it allows associating a specific piece of logic (a handler) with an event — in this case, the event of a client disconnecting.
+#### Parameters:
+- `client` (TcpClient): client to whom the message will be sent
+- `callback` (ActionCallck): The Action delegate represents a method that does not return a value and is called when the client disconnects.
+#### Returns: `None.`
+#### Example:
+```c#
+server.OnDisconnect(client, () =>
+{
+    Console.WriteLine($"Client {client.Client.RemoteEndPoint} has disconnected.");
+});
 ```
 
 # License
