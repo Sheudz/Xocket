@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System;
 using System.Threading.Tasks;
+using System.Runtime.CompilerServices;
 
 namespace Xocket
 {
@@ -15,7 +16,9 @@ namespace Xocket
         public int BufferSize { get; private set; } = 1024;
         private static Dictionary<string, string[]> PendingPackets = new Dictionary<string, string[]>();
         private static Dictionary<string, Tuple<string, TcpClient>> CompletedPackets = new Dictionary<string, Tuple<string, TcpClient>>();
-        private static Dictionary<TcpClient, Action> ClientDisconnectCallbacks = new Dictionary<TcpClient, Action>();
+
+        private static readonly ConditionalWeakTable<TcpClient, ClientEventHandlers> ClientEventTable =
+            new ConditionalWeakTable<TcpClient, ClientEventHandlers>();
 
         public Result StartServer(int port)
         {
@@ -38,9 +41,7 @@ namespace Xocket
             {
                 return Result.Fail($"Failed to start server: {ex.Message}");
             }
-
         }
-
         public Result StopServer()
         {
             try
@@ -56,6 +57,7 @@ namespace Xocket
                 return Result.Fail($"Failed to stop server: {ex.Message}");
             }
         }
+
         public Result SetBufferSize(int? size)
         {
             if (BufferSize < 64)
@@ -169,18 +171,23 @@ namespace Xocket
             NetworkStream stream = client.GetStream();
             byte[] buffer = new byte[BufferSize];
 
+            CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+            CancellationToken token = cancellationTokenSource.Token;
+
             try
             {
-                while (_isRunning)
+                _ = MonitorClientConnectionAsync(client, cancellationTokenSource);
+
+                while (_isRunning && !token.IsCancellationRequested)
                 {
-                    int bytesRead = await stream.ReadAsync(buffer, 0, 4);
+                    int bytesRead = await stream.ReadAsync(buffer, 0, 4, token);
                     if (bytesRead == 0) break;
 
                     string messageSizeStr = Encoding.UTF8.GetString(buffer, 0, 4);
                     if (!int.TryParse(messageSizeStr, out int messageSize)) continue;
                     if (messageSize <= 0 || messageSize > BufferSize) continue;
 
-                    bytesRead = await stream.ReadAsync(buffer, 0, messageSize);
+                    bytesRead = await stream.ReadAsync(buffer, 0, messageSize, token);
                     if (bytesRead == 0) break;
 
                     string message = Encoding.UTF8.GetString(buffer, 0, bytesRead);
@@ -225,15 +232,34 @@ namespace Xocket
                     catch { }
                 }
             }
-            catch { }
             finally
             {
+                cancellationTokenSource.Cancel();
                 client.Close();
-                if (ClientDisconnectCallbacks.ContainsKey(client))
+                if (ClientEventTable.TryGetValue(client, out var handlers))
                 {
-                    ClientDisconnectCallbacks[client]?.Invoke();
-                    ClientDisconnectCallbacks.Remove(client);
+                    handlers.InvokeOnDisconnect();
                 }
+            }
+        }
+
+        private async Task MonitorClientConnectionAsync(TcpClient client, CancellationTokenSource cancellationTokenSource)
+        {
+            try
+            {
+                while (!cancellationTokenSource.Token.IsCancellationRequested)
+                {
+                    if (!client.Connected)
+                    {
+                        cancellationTokenSource.Cancel();
+                        break;
+                    }
+                    await Task.Delay(1000);
+                }
+            }
+            catch
+            {
+                cancellationTokenSource.Cancel();
             }
         }
 
@@ -241,7 +267,22 @@ namespace Xocket
         {
             if (client != null)
             {
-                ClientDisconnectCallbacks[client] = callback;
+                ClientEventTable.AddOrUpdate(client, new ClientEventHandlers(callback));
+            }
+        }
+
+        private class ClientEventHandlers
+        {
+            private Action _onDisconnect;
+
+            public ClientEventHandlers(Action onDisconnect)
+            {
+                _onDisconnect = onDisconnect;
+            }
+
+            public void InvokeOnDisconnect()
+            {
+                _onDisconnect?.Invoke();
             }
         }
     }
