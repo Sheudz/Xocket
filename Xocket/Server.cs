@@ -1,11 +1,8 @@
 ﻿using System.Net.Sockets;
 using System.Net;
 using System.Text;
-using System.Collections.Generic;
-using System.Linq;
-using System;
-using System.Threading.Tasks;
 using System.Runtime.CompilerServices;
+using System.Collections.Generic;
 
 namespace Xocket
 {
@@ -19,6 +16,8 @@ namespace Xocket
 
         private static readonly ConditionalWeakTable<TcpClient, ClientEventHandlers> ClientEventTable =
             new ConditionalWeakTable<TcpClient, ClientEventHandlers>();
+
+        private List<CancellationTokenSource> _activeListeners = new List<CancellationTokenSource>();
 
         public Result StartServer(int port)
         {
@@ -42,6 +41,7 @@ namespace Xocket
                 return Result.Fail($"Failed to start server: {ex.Message}");
             }
         }
+
         public Result StopServer()
         {
             try
@@ -50,6 +50,13 @@ namespace Xocket
 
                 _isRunning = false;
                 _tcpListener.Stop();
+
+                foreach (var listener in _activeListeners)
+                {
+                    listener.Cancel();
+                }
+
+                _activeListeners.Clear();
                 return Result.Ok("Server stopped successfully.");
             }
             catch (Exception ex)
@@ -72,13 +79,18 @@ namespace Xocket
             return Result.Ok();
         }
 
-        public void Listen(string? packetId = null, TcpClient? specificClient = null, Func<TcpClient, string, Task> callback = null)
+        public Action Listen(string? packetId = null, TcpClient? specificClient = null, Func<TcpClient, string, Task> callback = null)
         {
+            var cancellationTokenSource = new CancellationTokenSource();
+            var token = cancellationTokenSource.Token;
+
+            _activeListeners.Add(cancellationTokenSource);
+
             Task.Run(async () =>
             {
                 try
                 {
-                    while (_isRunning)
+                    while (_isRunning && !token.IsCancellationRequested)
                     {
                         foreach (KeyValuePair<string, Tuple<string, TcpClient>> packetEntry in CompletedPackets)
                         {
@@ -97,13 +109,23 @@ namespace Xocket
                                 break;
                             }
                         }
-                        await Task.Delay(100);
+                        await Task.Delay(15);
                     }
                 }
-                catch {}
+                catch { }
+            });
+
+            return new Action(() =>
+            {
+                cancellationTokenSource.Cancel();
+                _activeListeners.Remove(cancellationTokenSource);
             });
         }
 
+        public void StopListening(Action stopListenAction)
+        {
+            stopListenAction();
+        }
 
         public async Task<Result> SendMessage(TcpClient client, string? packetId, string message)
         {

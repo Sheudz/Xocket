@@ -1,11 +1,5 @@
-﻿using System;
-using System.Linq;
-using System.Net.Sockets;
+﻿using System.Net.Sockets;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Collections.Generic;
-using System.IO;
 
 namespace Xocket
 {
@@ -17,6 +11,7 @@ namespace Xocket
         private static Dictionary<string, string[]> PendingPackets = new Dictionary<string, string[]>();
         private static Dictionary<string, string> CompletedPackets = new Dictionary<string, string>();
         private bool _isRunning = true;
+        private List<CancellationTokenSource> _listenerCancellationTokens = new List<CancellationTokenSource>();
 
         public Result Connect(string host, int port)
         {
@@ -38,6 +33,12 @@ namespace Xocket
         {
             try
             {
+                foreach (var tokenSource in _listenerCancellationTokens)
+                {
+                    tokenSource.Cancel();
+                }
+                _listenerCancellationTokens.Clear();
+
                 if (_stream != null)
                     _stream.Close();
 
@@ -188,13 +189,16 @@ namespace Xocket
             }
         }
 
-        public void Listen(string? packetId = null, Func<string, Task> callback = null)
+        public Action Listen(string? packetId = null, Func<string, Task> callback = null)
         {
+            var cancellationTokenSource = new CancellationTokenSource();
+            _listenerCancellationTokens.Add(cancellationTokenSource);
+
             Task.Run(async () =>
             {
                 try
                 {
-                    while (_isRunning)
+                    while (_isRunning && !cancellationTokenSource.Token.IsCancellationRequested)
                     {
                         foreach (KeyValuePair<string, string> packetEntry in CompletedPackets)
                         {
@@ -210,14 +214,21 @@ namespace Xocket
                                 }
 
                                 CompletedPackets.Remove(packetEntry.Key);
-                                break; 
+                                break;
                             }
                         }
-                        await Task.Delay(100);
+                        await Task.Delay(15);
                     }
                 }
-                catch {}
+                catch { }
             });
+
+            return () => cancellationTokenSource.Cancel();
+        }
+
+        public void StopListening(Action stopListenAction)
+        {
+            stopListenAction();
         }
     }
 }
