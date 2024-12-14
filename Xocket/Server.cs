@@ -72,33 +72,38 @@ namespace Xocket
             return Result.Ok();
         }
 
-        public async Task Listen(string? packetId = null, TcpClient? specificClient = null, Func<TcpClient, string, Task> callback = null)
+        public void Listen(string? packetId = null, TcpClient? specificClient = null, Func<TcpClient, string, Task> callback = null)
         {
-            try
+            Task.Run(async () =>
             {
-                while (_isRunning)
+                try
                 {
-                    foreach (KeyValuePair<string, Tuple<string, TcpClient>> packetEntry in CompletedPackets)
+                    while (_isRunning)
                     {
-                        Tuple<string, TcpClient> packet = packetEntry.Value;
-
-                        bool idMatches = packetId == null || packetEntry.Key == packetId;
-                        bool clientMatches = specificClient == null || packet.Item2 == specificClient;
-
-                        if (idMatches && clientMatches)
+                        foreach (KeyValuePair<string, Tuple<string, TcpClient>> packetEntry in CompletedPackets)
                         {
-                            if (callback != null)
+                            Tuple<string, TcpClient> packet = packetEntry.Value;
+
+                            bool idMatches = packetId == null || packetEntry.Key == packetId;
+                            bool clientMatches = specificClient == null || packet.Item2 == specificClient;
+
+                            if (idMatches && clientMatches)
                             {
-                                await callback.Invoke(packet.Item2, packet.Item1);
+                                if (callback != null)
+                                {
+                                    await callback.Invoke(packet.Item2, packet.Item1);
+                                }
+                                CompletedPackets.Remove(packetEntry.Key);
+                                break;
                             }
-                            CompletedPackets.Remove(packetEntry.Key);
-                            break;
                         }
+                        await Task.Delay(100);
                     }
-                    await Task.Delay(100);
                 }
-            } catch { }
+                catch {}
+            });
         }
+
 
         public async Task<Result> SendMessage(TcpClient client, string? packetId, string message)
         {

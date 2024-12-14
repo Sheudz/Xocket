@@ -188,32 +188,36 @@ namespace Xocket
             }
         }
 
-        public async Task Listen(string? packetId = null, Func<string, Task> callback = null)
+        public Task Listen(string? packetId = null, Func<string, Task> callback = null)
         {
-            try
+            return Task.Run(async () =>
             {
-                while (_isRunning)
+                try
                 {
-                    foreach (KeyValuePair<string, string> packetEntry in CompletedPackets)
+                    while (_isRunning)
                     {
-                        string packet = packetEntry.Value;
-
-                        bool idMatches = packetId == null || packetEntry.Key == packetId;
-
-                        if (idMatches)
+                        foreach (KeyValuePair<string, string> packetEntry in CompletedPackets)
                         {
-                            if (callback != null)
+                            string packet = packetEntry.Value;
+
+                            bool idMatches = packetId == null || packetEntry.Key == packetId;
+
+                            if (idMatches)
                             {
-                                await callback.Invoke(packet);
+                                if (callback != null)
+                                {
+                                    await callback.Invoke(packet);
+                                }
+
+                                CompletedPackets.Remove(packetEntry.Key);
+                                break; 
                             }
-                            CompletedPackets.Remove(packetEntry.Key);
-                            break;
                         }
+                        await Task.Delay(100);
                     }
-                    await Task.Delay(100);
                 }
-            }
-            catch {}
+                catch {}
+            });
         }
 
     }

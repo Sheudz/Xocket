@@ -16,10 +16,6 @@
 
 ### Xocket Server:
 ```c#
-using System;
-using System.Net.Sockets;
-using System.Text;
-using System.Threading.Tasks;
 using Xocket;
 
 namespace XocketTestServer
@@ -31,22 +27,11 @@ namespace XocketTestServer
         static async Task Main(string[] args)
         {
             server.StartServer(5555);
-            Task FuncOneTask = FuncOne();
-            Task FuncTwoTask = FuncTwo();
-            await Task.WhenAll(FuncOneTask, FuncTwoTask);
-        }
-        private static async Task FuncOne()
-        {
-            Console.WriteLine("Thread 1 started!");
-            await server.Listen("funcone", callback: async (client, message) =>
+            server.Listen("funcone", callback: async (client, message) =>
             {
                 Console.WriteLine($"func1: {message}");
             });
-        }
-        private static async Task FuncTwo()
-        {
-            Console.WriteLine("Thread 2 started!");
-            await server.Listen("functwo", callback: async (client, message) =>
+            server.Listen("functwo", callback: async (client, message) =>
             {
                 Console.WriteLine($"func2: {message}");
             });
@@ -58,7 +43,6 @@ namespace XocketTestServer
 ### Xocket Client:
 ```c#
 using System;
-using System.Linq;
 using System.Threading.Tasks;
 using Xocket;
 
@@ -262,7 +246,7 @@ server.OnDisconnect(client, () =>
 ```
 
 ## Listen(string? packetId = null, TcpClient? specificClient = null, Func<TcpClient, string, Task> callback = null) (FOR SERVER)
-### This asynchronous method listens for incoming messages and triggers a provided callback when specific packets are completed, based on a packet ID, a specific client, or both.
+### This method listens for incoming messages and triggers a provided callback when specific packets are completed, based on a packet ID, a specific client, or both.
 #### Parameters:
 - `packetId` (string?) This is an optional parameter used to filter packets by their unique identifier. If you want to listen for messages from a specific packet, you can provide its packetId.
 - `specificClient` (TcpClient?) This is an optional parameter that allows you to filter packets by a specific client. If you want to only process packets from a certain client, you can provide its TcpClient instance.
@@ -272,14 +256,14 @@ server.OnDisconnect(client, () =>
 - `string`: The packet's content (message or data).
 #### Examples:
 ```c#
-await server.Listen("packetid123", callback: async (client, packet) =>
+server.Listen("packetid123", callback: async (client, packet) =>
 {
     Console.WriteLine($"Received packet {packet} from client {client.Client.RemoteEndPoint}");
 });
 ```
 
 ## Listen(string? packetId = null, Func<string, string, Task> callback = null) (FOR CLIENT)
-### This asynchronous method listens for completed packets and invokes the provided callback when a matching packet is found, based on the optional packetId filter.
+### This method listens for completed packets and invokes the provided callback when a matching packet is found, based on the optional packetId filter.
 #### Parameters:
 - `packetId` (string?) This is an optional parameter used to filter packets by their unique identifier. If you want to listen for messages from a specific packet, you can provide its packetId.
 - `callback` (Func<string, Task>) This is an optional asynchronous callback function that is invoked when a matching packet is found.
@@ -287,7 +271,7 @@ await server.Listen("packetid123", callback: async (client, packet) =>
 - `string`: The packet's content (message or data).
 #### Examples:
 ```c#
-await client.Listen("packet123", async (packet) =>
+client.Listen("packet123", async (packet) =>
 {
     Console.WriteLine($"Received packet: {packet}");
 });
