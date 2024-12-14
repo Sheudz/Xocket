@@ -270,6 +270,7 @@ listener = server.Listen("packetid123", callback: async (client, packet) =>
 #### Parameters:
 - `packetId` (string?) This is an optional parameter used to filter packets by their unique identifier. If you want to listen for messages from a specific packet, you can provide its packetId.
 - `callback` (Func<string, Task>) This is an optional asynchronous callback function that is invoked when a matching packet is found.
+#### Returns: `Action`
 #### Callback receives:
 - `string`: The packet's content (message or data).
 #### Examples:
