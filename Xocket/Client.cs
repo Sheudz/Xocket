@@ -188,9 +188,9 @@ namespace Xocket
             }
         }
 
-        public Task Listen(string? packetId = null, Func<string, Task> callback = null)
+        public void Listen(string? packetId = null, Func<string, Task> callback = null)
         {
-            return Task.Run(async () =>
+            Task.Run(async () =>
             {
                 try
                 {
@@ -219,6 +219,5 @@ namespace Xocket
                 catch {}
             });
         }
-
     }
 }
