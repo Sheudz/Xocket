@@ -251,14 +251,17 @@ server.OnDisconnect(client, () =>
 - `packetId` (string?) This is an optional parameter used to filter packets by their unique identifier. If you want to listen for messages from a specific packet, you can provide its packetId.
 - `specificClient` (TcpClient?) This is an optional parameter that allows you to filter packets by a specific client. If you want to only process packets from a certain client, you can provide its TcpClient instance.
 - `callback` (Func<TcpClient, string, Task>) This is an optional asynchronous callback function that is invoked when a matching packet is found.
+#### Returns: `Action`
 #### Callback receives:
 - `TcpClient`: The client (TcpClient) that sent the packet.
 - `string`: The packet's content (message or data).
 #### Examples:
 ```c#
-server.Listen("packetid123", callback: async (client, packet) =>
+Action? listener = null;
+listener = server.Listen("packetid123", callback: async (client, packet) =>
 {
     Console.WriteLine($"Received packet {packet} from client {client.Client.RemoteEndPoint}");
+    server.StopListening(listener!);
 });
 ```
 
@@ -267,13 +270,16 @@ server.Listen("packetid123", callback: async (client, packet) =>
 #### Parameters:
 - `packetId` (string?) This is an optional parameter used to filter packets by their unique identifier. If you want to listen for messages from a specific packet, you can provide its packetId.
 - `callback` (Func<string, Task>) This is an optional asynchronous callback function that is invoked when a matching packet is found.
+#### Returns: `Action`
 #### Callback receives:
 - `string`: The packet's content (message or data).
 #### Examples:
 ```c#
-client.Listen("packet123", async (packet) =>
+Action? listener = null;
+listener = client.Listen("packet123", async (packet) =>
 {
     Console.WriteLine($"Received packet: {packet}");
+    client.StopListening(listener!);
 });
 ```
 
