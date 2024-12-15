@@ -54,15 +54,15 @@ namespace Xocket
         }
         public Result SetBufferSize(int? size)
         {
-            if (BufferSize < 64)
+            if (size < 64)
             {
                 return Result.Fail("Buffer size is too small.");
             }
-            else if (BufferSize > 4096)
+            else if (size > 4096)
             {
                 return Result.Fail("Buffer size is too large.");
             }
-            BufferSize = size ?? 1024;
+            size = size ?? 1024;
             return Result.Ok();
         }
 
