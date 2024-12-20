@@ -8,8 +8,8 @@ namespace Xocket
         public int BufferSize { get; private set; } = 1024;
         private TcpClient _client;
         private NetworkStream _stream;
-        private static Dictionary<string, string[]> PendingPackets = new Dictionary<string, string[]>();
-        private static Dictionary<string, string> CompletedPackets = new Dictionary<string, string>();
+        private static Dictionary<string, byte[]> PendingPackets = new Dictionary<string, byte[]>();
+        private static Dictionary<string, byte[]> CompletedPackets = new Dictionary<string, byte[]>();
         private bool _isRunning = true;
         private List<CancellationTokenSource> _listenerCancellationTokens = new List<CancellationTokenSource>();
 
@@ -62,11 +62,11 @@ namespace Xocket
             {
                 return Result.Fail("Buffer size is too large.");
             }
-            size = size ?? 1024;
+            BufferSize = size ?? 1024;
             return Result.Ok();
         }
 
-        public async Task<Result> SendMessage(string? packetId, string message)
+        public async Task<Result> SendMessage(string? packetId, byte[] messageBytes)
         {
             if (_client == null || !_client.Connected) return Result.Fail("Connection lost.");
             if (packetId != null && Encoding.UTF8.GetBytes(packetId).Length > BufferSize * 0.30)
@@ -76,7 +76,6 @@ namespace Xocket
 
             try
             {
-                byte[] messageBytes = Encoding.UTF8.GetBytes(message);
                 byte[] header = Encoding.UTF8.GetBytes($"singlemessage¶|~{packetId ?? "nullid"}¶|~");
 
                 if (4 + messageBytes.Length + header.Length > BufferSize)
@@ -88,16 +87,15 @@ namespace Xocket
 
                     int chunkSize = BufferSize - Encoding.UTF8.GetBytes($"appenddata¶|~{dataId}¶|~").Length - 4;
                     int bytesSent = 0;
-                    
+
                     while (bytesSent < messageBytes.Length)
                     {
                         int bytesToSend = Math.Min(chunkSize, messageBytes.Length - bytesSent);
-                        byte[] chunk = Encoding.UTF8.GetBytes($"appenddata¶|~{dataId}¶|~")
-                            .Concat(messageBytes.Skip(bytesSent).Take(bytesToSend))
-                            .ToArray();
+                        byte[] chunkHeader = Encoding.UTF8.GetBytes($"appenddata¶|~{dataId}¶|~");
+                        byte[] chunk = chunkHeader.Concat(messageBytes.Skip(bytesSent).Take(bytesToSend)).ToArray();
                         byte[] chunkLength = Encoding.UTF8.GetBytes(chunk.Length.ToString("D4"));
-                        byte[] appendmessage = chunkLength.Concat(chunk).ToArray();
-                        await _stream.WriteAsync(appendmessage, 0, appendmessage.Length);
+                        byte[] appendMessage = chunkLength.Concat(chunk).ToArray();
+                        await _stream.WriteAsync(appendMessage, 0, appendMessage.Length);
                         bytesSent += bytesToSend;
                     }
 
@@ -108,8 +106,9 @@ namespace Xocket
                 }
                 else
                 {
-                    int size = Encoding.UTF8.GetBytes($"singlemessage¶|~{packetId ?? "nullid"}¶|~{message}").Length;
-                    byte[] fullMessage = Encoding.UTF8.GetBytes($"{size.ToString("D4")}singlemessage¶|~{packetId ?? "nullid"}¶|~{message}");
+                    int size = 4 + header.Length + messageBytes.Length;
+                    byte[] sizeHeader = Encoding.UTF8.GetBytes(size.ToString("D4"));
+                    byte[] fullMessage = sizeHeader.Concat(header).Concat(messageBytes).ToArray();
                     await _stream.WriteAsync(fullMessage, 0, fullMessage.Length);
                     return Result.Ok("Message sent successfully.");
                 }
@@ -119,7 +118,6 @@ namespace Xocket
                 return Result.Fail($"Failed to send message: {ex.Message}");
             }
         }
-
         private async void StartListening()
         {
             byte[] buffer = new byte[BufferSize];
@@ -138,17 +136,20 @@ namespace Xocket
                     bytesRead = await _stream.ReadAsync(buffer, 0, messageSize);
                     if (bytesRead == 0) break;
 
-                    string message = Encoding.UTF8.GetString(buffer, 0, bytesRead);
+                    byte[] message = buffer.Take(bytesRead).ToArray();
 
                     try
                     {
-                        string[] messageParts = message.Split(new string[] { "¶|~" }, StringSplitOptions.None);
+                        string header = Encoding.UTF8.GetString(message);
+                        string[] messageParts = header.Split(new string[] { "¶|~" }, StringSplitOptions.None);
+
                         if (messageParts.Length > 0)
                         {
                             if (messageParts[0] == "singlemessage")
                             {
                                 string packetId = messageParts[1];
-                                string payload = messageParts[2];
+                                int headerLength = Encoding.UTF8.GetBytes($"singlemessage¶|~{packetId}¶|~").Length;
+                                byte[] payload = message.Skip(headerLength).ToArray();
                                 CompletedPackets[packetId] = payload;
                             }
                             else if (messageParts[0] == "startlistening")
@@ -156,14 +157,17 @@ namespace Xocket
                                 string dataId = messageParts[1];
                                 string packetId = messageParts[2];
 
-                                PendingPackets[dataId] = new string[] { dataId, packetId, "" };
+                                PendingPackets[dataId] = new byte[] { };
                             }
                             else if (messageParts[0] == "appenddata")
                             {
                                 string dataId = messageParts[1];
+                                int headerLength = Encoding.UTF8.GetBytes($"appenddata¶|~{dataId}¶|~").Length;
+                                byte[] payload = message.Skip(headerLength).ToArray();
+
                                 if (PendingPackets.ContainsKey(dataId))
                                 {
-                                    PendingPackets[dataId][2] += messageParts[2];
+                                    PendingPackets[dataId] = PendingPackets[dataId].Concat(payload).ToArray();
                                 }
                             }
                             else if (messageParts[0] == "enddata")
@@ -171,25 +175,25 @@ namespace Xocket
                                 string dataId = messageParts[1];
                                 if (PendingPackets.ContainsKey(dataId))
                                 {
-                                    string packetId = PendingPackets[dataId][1];
-                                    string payload = PendingPackets[dataId][2];
+                                    string packetId = messageParts[2];
+                                    byte[] payload = PendingPackets[dataId];
 
                                     CompletedPackets[packetId] = payload;
-
                                     PendingPackets.Remove(dataId);
                                 }
                             }
                         }
-                    } catch {}
+                    }
+                    catch { }
                 }
-            } catch {}
+            }
+            catch { }
             finally
             {
                 _client.Close();
             }
         }
-
-        public Action Listen(string? packetId = null, Func<string, Task> callback = null)
+        public Action Listen(string? packetId = null, Func<byte[], Task> callback = null)
         {
             var cancellationTokenSource = new CancellationTokenSource();
             _listenerCancellationTokens.Add(cancellationTokenSource);
@@ -200,9 +204,9 @@ namespace Xocket
                 {
                     while (_isRunning && !cancellationTokenSource.Token.IsCancellationRequested)
                     {
-                        foreach (KeyValuePair<string, string> packetEntry in CompletedPackets)
+                        foreach (KeyValuePair<string, byte[]> packetEntry in CompletedPackets)
                         {
-                            string packet = packetEntry.Value;
+                            byte[] packet = packetEntry.Value;
 
                             bool idMatches = packetId == null || packetEntry.Key == packetId;
 

@@ -127,7 +127,7 @@ namespace Xocket
             stopListenAction();
         }
 
-        public async Task<Result> SendMessage(TcpClient client, string? packetId, string message)
+        public async Task<Result> SendMessage(TcpClient client, string? packetId, byte[] messageBytes)
         {
             if (client == null || !client.Connected) return Result.Fail("Connection lost.");
             if (packetId != null && Encoding.UTF8.GetBytes(packetId).Length > BufferSize * 0.30)
@@ -136,7 +136,6 @@ namespace Xocket
             }
             try
             {
-                byte[] messageBytes = Encoding.UTF8.GetBytes(message);
                 byte[] header = Encoding.UTF8.GetBytes($"singlemessage¶|~{packetId ?? "nullid"}¶|~");
                 if (4 + messageBytes.Length + header.Length > BufferSize)
                 {
@@ -151,12 +150,11 @@ namespace Xocket
                     while (bytesSent < messageBytes.Length)
                     {
                         int bytesToSend = Math.Min(chunkSize, messageBytes.Length - bytesSent);
-                        byte[] chunk = Encoding.UTF8.GetBytes($"appenddata¶|~{dataId}¶|~")
-                            .Concat(messageBytes.Skip(bytesSent).Take(bytesToSend))
-                            .ToArray();
+                        byte[] chunkHeader = Encoding.UTF8.GetBytes($"appenddata¶|~{dataId}¶|~");
+                        byte[] chunk = chunkHeader.Concat(messageBytes.Skip(bytesSent).Take(bytesToSend)).ToArray();
                         byte[] chunkLength = Encoding.UTF8.GetBytes(chunk.Length.ToString("D4"));
-                        byte[] appendmessage = chunkLength.Concat(chunk).ToArray();
-                        await stream.WriteAsync(appendmessage, 0, appendmessage.Length);
+                        byte[] appendMessage = chunkLength.Concat(chunk).ToArray();
+                        await stream.WriteAsync(appendMessage, 0, appendMessage.Length);
                         bytesSent += bytesToSend;
                     }
 
@@ -167,8 +165,9 @@ namespace Xocket
                 }
                 else
                 {
-                    int size = Encoding.UTF8.GetBytes($"singlemessage¶|~{packetId ?? "nullid"}¶|~{message}").Length;
-                    byte[] fullMessage = Encoding.UTF8.GetBytes($"{size.ToString("D4")}singlemessage¶|~{packetId ?? "nullid"}¶|~{message}");
+                    int size = 4 + header.Length + messageBytes.Length;
+                    byte[] sizeHeader = Encoding.UTF8.GetBytes(size.ToString("D4"));
+                    byte[] fullMessage = sizeHeader.Concat(header).Concat(messageBytes).ToArray();
                     NetworkStream stream = client.GetStream();
                     await stream.WriteAsync(fullMessage, 0, fullMessage.Length);
                     return Result.Ok("Message sent successfully.");
