@@ -29,11 +29,11 @@ namespace XocketTestServer
             server.StartServer(5555);
             server.Listen("funcone", callback: async (client, message) =>
             {
-                Console.WriteLine($"func1: {message}");
+                Console.WriteLine($"func1: {Encoding.UTF8.GetString(message)}");
             });
             server.Listen("functwo", callback: async (client, message) =>
             {
-                Console.WriteLine($"func2: {message}");
+                Console.WriteLine($"func2: {Encoding.UTF8.GetString(message)}");
             });
         }
     }
@@ -66,7 +66,7 @@ namespace XocketTestClient
             Console.WriteLine("Thread 1 started!");
             while (true)
             {
-                Result messageresult = await client.SendMessage("funcone", "test1");
+                Result messageresult = await client.SendMessage("funcone", Encoding.UTF8.GetBytes("test1"));
                 Console.WriteLine("func1: " + messageresult.Message);
                 await Task.Delay(100);
             }
@@ -77,7 +77,7 @@ namespace XocketTestClient
             Console.WriteLine("Thread 2 started!");
             while (true)
             {
-                Result messageresult = await client.SendMessage("functwo", "test2");
+                Result messageresult = await client.SendMessage("functwo", Encoding.UTF8.GetBytes("test2"));
                 Console.WriteLine("func2: " + messageresult.Message);
                 await Task.Delay(100);
             }
@@ -199,34 +199,34 @@ Result result = server.StopServer();
 Console.WriteLine(result.Success, result.Message);
 ```
 
-## SendMessage(string? packetId, string message) (FOR CLIENT)
+## SendMessage(string? packetId, byte[] message) (FOR CLIENT)
 ### Asynchronously sends a message to the connected server, optionally with a packet ID. If the message exceeds the buffer size, it is split into chunks and sent incrementally.
 #### Parameters:
 - `packetId` (string?): An optional identifier for the packet. If not provided, defaults to "nullid"
-- `message` (string): The message content to be sent.
+- `message` (byte[]): The message content to be sent.
 #### Returns:
 - Result class
     - Success: `Message sent successfully.`
     - Failure: `Connection lost.`, `Packet ID is too long.`, `Failed to send message: {ex.Message}`.
 #### Example:
 ```c#
-Result result = await client.SendMessage("12345", "Hello, World!");
+Result result = await client.SendMessage("12345", Encoding.UTF8.GetBytes("Hello, World!"));
 Console.WriteLine(result.Message);
 ```
 
-## SendMessage(TcpClient client, string? packetId, string message) (FOR SERVER)
+## SendMessage(TcpClient client, string? packetId, byte[] message) (FOR SERVER)
 ### Asynchronously sends a message to the specific client, optionally with a packet ID. If the message exceeds the buffer size, it is split into chunks and sent incrementally.
 #### Parameters:
 - `client` (TcpClient): client to whom the message will be sent
 - `packetId` (string?): An optional identifier for the packet. If not provided, defaults to "nullid"
-- `message` (string): The message content to be sent.
+- `message` (byte[]): The message content to be sent.
 #### Returns:
 - Result class
     - Success: `Message sent successfully.`
     - Failure: `Connection lost.`, `Packet ID is too long.`, `Failed to send message: {ex.Message}`.
 #### Example:
 ```c#
-Result result = await server.SendMessage(client, "12345", "Hello, World!");
+Result result = await server.SendMessage(client, "12345", Encoding.UTF8.GetBytes("Hello, World!"));
 Console.WriteLine(result.Message);
 ```
 
@@ -245,40 +245,40 @@ server.OnDisconnect(client, () =>
 });
 ```
 
-## Listen(string? packetId = null, TcpClient? specificClient = null, Func<TcpClient, string, Task> callback = null) (FOR SERVER)
+## Listen(string? packetId = null, TcpClient? specificClient = null, Func<TcpClient, byte[], Task> callback = null) (FOR SERVER)
 ### This method listens for incoming messages and triggers a provided callback when specific packets are completed, based on a packet ID, a specific client, or both.
 #### Parameters:
 - `packetId` (string?) This is an optional parameter used to filter packets by their unique identifier. If you want to listen for messages from a specific packet, you can provide its packetId.
 - `specificClient` (TcpClient?) This is an optional parameter that allows you to filter packets by a specific client. If you want to only process packets from a certain client, you can provide its TcpClient instance.
-- `callback` (Func<TcpClient, string, Task>) This is an optional asynchronous callback function that is invoked when a matching packet is found.
+- `callback` (Func<TcpClient, byte[], Task>) This is an optional asynchronous callback function that is invoked when a matching packet is found.
 #### Returns: `Action`
 #### Callback receives:
 - `TcpClient`: The client (TcpClient) that sent the packet.
-- `string`: The packet's content (message or data).
+- `byte[]`: The packet's content (message or data).
 #### Examples:
 ```c#
 Action? listener = null;
 listener = server.Listen("packetid123", callback: async (client, packet) =>
 {
-    Console.WriteLine($"Received packet {packet} from client {client.Client.RemoteEndPoint}");
+    Console.WriteLine($"Received packet {Encoding.UTF8.GetString(packet)} from client {client.Client.RemoteEndPoint}");
     server.StopListening(listener!);
 });
 ```
 
-## Listen(string? packetId = null, Func<string, string, Task> callback = null) (FOR CLIENT)
+## Listen(string? packetId = null, Func<string, byte[], Task> callback = null) (FOR CLIENT)
 ### This method listens for completed packets and invokes the provided callback when a matching packet is found, based on the optional packetId filter.
 #### Parameters:
 - `packetId` (string?) This is an optional parameter used to filter packets by their unique identifier. If you want to listen for messages from a specific packet, you can provide its packetId.
-- `callback` (Func<string, Task>) This is an optional asynchronous callback function that is invoked when a matching packet is found.
+- `callback` (Func<byte[], Task>) This is an optional asynchronous callback function that is invoked when a matching packet is found.
 #### Returns: `Action`
 #### Callback receives:
-- `string`: The packet's content (message or data).
+- `byte[]`: The packet's content (message or data).
 #### Examples:
 ```c#
 Action? listener = null;
 listener = client.Listen("packet123", async (packet) =>
 {
-    Console.WriteLine($"Received packet: {packet}");
+    Console.WriteLine($"Received packet: {Encoding.UTF8.GetString(packet)}");
     client.StopListening(listener!);
 });
 ```
