@@ -81,7 +81,7 @@ namespace Xocket
                 if (4 + messageBytes.Length + header.Length > BufferSize)
                 {
                     string dataId = Guid.NewGuid().ToString();
-                    string startMessage = $"{Encoding.UTF8.GetBytes($"startlistening¶|~{dataId}¶|~{packetId ?? "nullid"}").Length.ToString("D4")}startlistening¶|~{dataId}¶|~{packetId ?? "nullid"}";
+                    string startMessage = $"{Encoding.UTF8.GetBytes($"startlistening¶|~{dataId}").Length.ToString("D4")}startlistening¶|~{dataId}";
 
                     await _stream.WriteAsync(Encoding.UTF8.GetBytes(startMessage), 0, Encoding.UTF8.GetBytes(startMessage).Length);
 
@@ -99,7 +99,7 @@ namespace Xocket
                         bytesSent += bytesToSend;
                     }
 
-                    string endMessage = Encoding.UTF8.GetBytes($"enddata¶|~{dataId}").Length.ToString("D4") + $"enddata¶|~{dataId}";
+                    string endMessage = Encoding.UTF8.GetBytes($"enddata¶|~{dataId}¶|~{packetId ?? "nullid"}").Length.ToString("D4") + $"enddata¶|~{dataId}¶|~{packetId ?? "nullid"}";
                     await _stream.WriteAsync(Encoding.UTF8.GetBytes(endMessage), 0, Encoding.UTF8.GetBytes(endMessage).Length);
 
                     return Result.Ok("Message sent successfully.");
@@ -137,7 +137,7 @@ namespace Xocket
                     if (bytesRead == 0) break;
 
                     byte[] message = buffer.Take(bytesRead).ToArray();
-
+                    Console.WriteLine(Encoding.UTF8.GetString(message));
                     try
                     {
                         string header = Encoding.UTF8.GetString(message);
@@ -155,7 +155,6 @@ namespace Xocket
                             else if (messageParts[0] == "startlistening")
                             {
                                 string dataId = messageParts[1];
-                                string packetId = messageParts[2];
 
                                 PendingPackets[dataId] = new byte[] { };
                             }
@@ -193,6 +192,7 @@ namespace Xocket
                 _client.Close();
             }
         }
+
         public Action Listen(string? packetId = null, Func<byte[], Task> callback = null)
         {
             var cancellationTokenSource = new CancellationTokenSource();

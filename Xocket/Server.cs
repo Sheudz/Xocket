@@ -11,8 +11,8 @@ namespace Xocket
         private TcpListener _tcpListener;
         private bool _isRunning;
         public int BufferSize { get; private set; } = 1024;
-        private static Dictionary<string, string[]> PendingPackets = new Dictionary<string, string[]>();
-        private static Dictionary<string, Tuple<string, TcpClient>> CompletedPackets = new Dictionary<string, Tuple<string, TcpClient>>();
+        private static Dictionary<string, byte[]> PendingPackets = new Dictionary<string, byte[]>();
+        private static Dictionary<string, Tuple<byte[], TcpClient>> CompletedPackets = new Dictionary<string, Tuple<byte[], TcpClient>>();
 
         private static readonly ConditionalWeakTable<TcpClient, ClientEventHandlers> ClientEventTable =
             new ConditionalWeakTable<TcpClient, ClientEventHandlers>();
@@ -79,7 +79,7 @@ namespace Xocket
             return Result.Ok();
         }
 
-        public Action Listen(string? packetId = null, TcpClient? specificClient = null, Func<TcpClient, string, Task> callback = null)
+        public Action Listen(string? packetId = null, TcpClient? specificClient = null, Func<TcpClient, byte[], Task> callback = null)
         {
             var cancellationTokenSource = new CancellationTokenSource();
             var token = cancellationTokenSource.Token;
@@ -92,9 +92,9 @@ namespace Xocket
                 {
                     while (_isRunning && !token.IsCancellationRequested)
                     {
-                        foreach (KeyValuePair<string, Tuple<string, TcpClient>> packetEntry in CompletedPackets)
+                        foreach (KeyValuePair<string, Tuple<byte[], TcpClient>> packetEntry in CompletedPackets)
                         {
-                            Tuple<string, TcpClient> packet = packetEntry.Value;
+                            Tuple<byte[], TcpClient> packet = packetEntry.Value;
 
                             bool idMatches = packetId == null || packetEntry.Key == packetId;
                             bool clientMatches = specificClient == null || packet.Item2 == specificClient;
@@ -141,9 +141,9 @@ namespace Xocket
                 {
                     NetworkStream stream = client.GetStream();
                     string dataId = Guid.NewGuid().ToString();
-                    string startMessage = $"{Encoding.UTF8.GetBytes($"startlistening¶|~{dataId}¶|~{packetId ?? "nullid"}").Length.ToString("D4")}startlistening¶|~{dataId}¶|~{packetId ?? "nullid"}";
+                    string startMessage = $"{Encoding.UTF8.GetBytes($"startlistening¶|~{dataId}").Length.ToString("D4")}startlistening¶|~{dataId}";
                     await stream.WriteAsync(Encoding.UTF8.GetBytes(startMessage), 0, Encoding.UTF8.GetBytes(startMessage).Length);
-
+                    Console.WriteLine(Encoding.UTF8.GetString(Encoding.UTF8.GetBytes(startMessage)));
                     int chunkSize = BufferSize - Encoding.UTF8.GetBytes($"appenddata¶|~{dataId}¶|~").Length - 4;
                     int bytesSent = 0;
 
@@ -155,12 +155,13 @@ namespace Xocket
                         byte[] chunkLength = Encoding.UTF8.GetBytes(chunk.Length.ToString("D4"));
                         byte[] appendMessage = chunkLength.Concat(chunk).ToArray();
                         await stream.WriteAsync(appendMessage, 0, appendMessage.Length);
+                        Console.WriteLine(Encoding.UTF8.GetString(appendMessage));
                         bytesSent += bytesToSend;
                     }
 
-                    string endMessage = Encoding.UTF8.GetBytes($"enddata¶|~{dataId}").Length.ToString("D4") + $"enddata¶|~{dataId}";
+                    string endMessage = Encoding.UTF8.GetBytes($"enddata¶|~{dataId}¶|~{packetId ?? "nullid"}").Length.ToString("D4") + $"enddata¶|~{dataId}¶|~{packetId ?? "nullid"}";
                     await stream.WriteAsync(Encoding.UTF8.GetBytes(endMessage), 0, Encoding.UTF8.GetBytes(endMessage).Length);
-
+                    Console.WriteLine(Encoding.UTF8.GetString(Encoding.UTF8.GetBytes(endMessage)));
                     return Result.Ok("Message sent successfully.");
                 }
                 else
@@ -170,6 +171,7 @@ namespace Xocket
                     byte[] fullMessage = sizeHeader.Concat(header).Concat(messageBytes).ToArray();
                     NetworkStream stream = client.GetStream();
                     await stream.WriteAsync(fullMessage, 0, fullMessage.Length);
+                    Console.WriteLine(Encoding.UTF8.GetString(fullMessage));
                     return Result.Ok("Message sent successfully.");
                 }
             }
@@ -216,40 +218,46 @@ namespace Xocket
                     bytesRead = await stream.ReadAsync(buffer, 0, messageSize, token);
                     if (bytesRead == 0) break;
 
-                    string message = Encoding.UTF8.GetString(buffer, 0, bytesRead);
+                    byte[] receivedBytes = buffer.Take(bytesRead).ToArray();
+
                     try
                     {
-                        string[] messageParts = message.Split(new string[] { "¶|~" }, StringSplitOptions.None);
+                        string header = Encoding.UTF8.GetString(receivedBytes, 0, Math.Min(receivedBytes.Length, BufferSize));
+                        string[] messageParts = header.Split(new string[] { "¶|~" }, StringSplitOptions.None);
+
                         if (messageParts.Length > 0)
                         {
                             if (messageParts[0] == "singlemessage")
                             {
                                 string packetId = messageParts[1];
-                                string payload = messageParts[2];
-                                CompletedPackets[packetId] = Tuple.Create(payload, client);
+                                int headerLength = Encoding.UTF8.GetBytes($"singlemessage¶|~{packetId}¶|~").Length;
+
+                                byte[] payloadBytes = receivedBytes.Skip(headerLength).ToArray();
+                                CompletedPackets[packetId] = Tuple.Create(payloadBytes, client);
                             }
                             else if (messageParts[0] == "startlistening")
                             {
                                 string dataId = messageParts[1];
-                                string packetId = messageParts[2];
-                                PendingPackets[dataId] = new string[] { dataId, packetId, "" };
+                                PendingPackets[dataId] = Array.Empty<byte>();
                             }
                             else if (messageParts[0] == "appenddata")
                             {
                                 string dataId = messageParts[1];
-                                if (PendingPackets.TryGetValue(dataId, out string[] packet))
+                                if (PendingPackets.TryGetValue(dataId, out byte[] existingData))
                                 {
-                                    PendingPackets[dataId][2] += messageParts[2];
+                                    int headerLength = Encoding.UTF8.GetBytes($"appenddata¶|~{dataId}¶|~").Length;
+                                    byte[] payloadBytes = receivedBytes.Skip(headerLength).ToArray();
+
+                                    PendingPackets[dataId] = existingData.Concat(payloadBytes).ToArray();
                                 }
                             }
                             else if (messageParts[0] == "enddata")
                             {
                                 string dataId = messageParts[1];
-                                if (PendingPackets.TryGetValue(dataId, out string[] packet))
+                                if (PendingPackets.TryGetValue(dataId, out byte[] finalData))
                                 {
-                                    string packetId = packet[1];
-                                    string payload = packet[2];
-                                    CompletedPackets[packetId] = Tuple.Create(payload, client);
+                                    string packetId = messageParts[2];
+                                    CompletedPackets[packetId] = Tuple.Create(finalData, client);
                                     PendingPackets.Remove(dataId);
                                 }
                             }
