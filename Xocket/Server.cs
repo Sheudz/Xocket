@@ -143,7 +143,6 @@ namespace Xocket
                     string dataId = Guid.NewGuid().ToString();
                     string startMessage = $"{Encoding.UTF8.GetBytes($"startlistening¶|~{dataId}").Length.ToString("D4")}startlistening¶|~{dataId}";
                     await stream.WriteAsync(Encoding.UTF8.GetBytes(startMessage), 0, Encoding.UTF8.GetBytes(startMessage).Length);
-                    Console.WriteLine(Encoding.UTF8.GetString(Encoding.UTF8.GetBytes(startMessage)));
                     int chunkSize = BufferSize - Encoding.UTF8.GetBytes($"appenddata¶|~{dataId}¶|~").Length - 4;
                     int bytesSent = 0;
 
@@ -155,13 +154,11 @@ namespace Xocket
                         byte[] chunkLength = Encoding.UTF8.GetBytes(chunk.Length.ToString("D4"));
                         byte[] appendMessage = chunkLength.Concat(chunk).ToArray();
                         await stream.WriteAsync(appendMessage, 0, appendMessage.Length);
-                        Console.WriteLine(Encoding.UTF8.GetString(appendMessage));
                         bytesSent += bytesToSend;
                     }
 
                     string endMessage = Encoding.UTF8.GetBytes($"enddata¶|~{dataId}¶|~{packetId ?? "nullid"}").Length.ToString("D4") + $"enddata¶|~{dataId}¶|~{packetId ?? "nullid"}";
                     await stream.WriteAsync(Encoding.UTF8.GetBytes(endMessage), 0, Encoding.UTF8.GetBytes(endMessage).Length);
-                    Console.WriteLine(Encoding.UTF8.GetString(Encoding.UTF8.GetBytes(endMessage)));
                     return Result.Ok("Message sent successfully.");
                 }
                 else
@@ -171,7 +168,6 @@ namespace Xocket
                     byte[] fullMessage = sizeHeader.Concat(header).Concat(messageBytes).ToArray();
                     NetworkStream stream = client.GetStream();
                     await stream.WriteAsync(fullMessage, 0, fullMessage.Length);
-                    Console.WriteLine(Encoding.UTF8.GetString(fullMessage));
                     return Result.Ok("Message sent successfully.");
                 }
             }

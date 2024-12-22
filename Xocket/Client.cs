@@ -137,7 +137,6 @@ namespace Xocket
                     if (bytesRead == 0) break;
 
                     byte[] message = buffer.Take(bytesRead).ToArray();
-                    Console.WriteLine(Encoding.UTF8.GetString(message));
                     try
                     {
                         string header = Encoding.UTF8.GetString(message);
