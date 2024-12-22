@@ -13,7 +13,7 @@ namespace Xocket
         private bool _isRunning = true;
         private List<CancellationTokenSource> _listenerCancellationTokens = new List<CancellationTokenSource>();
 
-        public Result Connect(string host, int port)
+        public void Connect(string host, int port)
         {
             try
             {
@@ -21,15 +21,14 @@ namespace Xocket
                 _client.Connect(host, port);
                 _stream = _client.GetStream();
                 StartListening();
-                return Result.Ok("Connection established successfully.");
             }
             catch (Exception ex)
             {
-                return Result.Fail($"Error: {ex.Message}");
+                throw new InvalidOperationException($"Error connecting to {host}:{port} - {ex.Message}", ex);
             }
         }
 
-        public Result Disconnect()
+        public void Disconnect()
         {
             try
             {
@@ -44,34 +43,36 @@ namespace Xocket
 
                 if (_client != null)
                     _client.Close();
-
-                return Result.Ok("Disconnected successfully.");
             }
             catch (Exception ex)
             {
-                return Result.Fail($"Error: {ex.Message}");
+                throw new InvalidOperationException($"Error during disconnect: {ex.Message}", ex);
             }
         }
-        public Result SetBufferSize(int? size)
+        public void SetBufferSize(int? size)
         {
             if (size < 64)
             {
-                return Result.Fail("Buffer size is too small.");
+                throw new ArgumentOutOfRangeException(nameof(size), "Buffer size is too small.");
             }
             else if (size > 4096)
             {
-                return Result.Fail("Buffer size is too large.");
+                throw new ArgumentOutOfRangeException(nameof(size), "Buffer size is too large.");
             }
+
             BufferSize = size ?? 1024;
-            return Result.Ok();
         }
 
-        public async Task<Result> SendMessage(string? packetId, byte[] messageBytes)
+        public async Task SendMessage(string? packetId, byte[] messageBytes)
         {
-            if (_client == null || !_client.Connected) return Result.Fail("Connection lost.");
+            if (_client == null || !_client.Connected)
+            {
+                throw new InvalidOperationException("Connection lost.");
+            }
+
             if (packetId != null && Encoding.UTF8.GetBytes(packetId).Length > BufferSize * 0.30)
             {
-                return Result.Fail("Packet ID is too long.");
+                throw new ArgumentException("Packet ID is too long.", nameof(packetId));
             }
 
             try
@@ -81,7 +82,7 @@ namespace Xocket
                 if (4 + messageBytes.Length + header.Length > BufferSize)
                 {
                     string dataId = Guid.NewGuid().ToString();
-                    string startMessage = $"{Encoding.UTF8.GetBytes($"startlistening¶|~{dataId}").Length.ToString("D4")}startlistening¶|~{dataId}";
+                    string startMessage = $"{Encoding.UTF8.GetBytes($"startlistening¶|~{dataId}").Length:D4}startlistening¶|~{dataId}";
 
                     await _stream.WriteAsync(Encoding.UTF8.GetBytes(startMessage), 0, Encoding.UTF8.GetBytes(startMessage).Length);
 
@@ -101,8 +102,6 @@ namespace Xocket
 
                     string endMessage = Encoding.UTF8.GetBytes($"enddata¶|~{dataId}¶|~{packetId ?? "nullid"}").Length.ToString("D4") + $"enddata¶|~{dataId}¶|~{packetId ?? "nullid"}";
                     await _stream.WriteAsync(Encoding.UTF8.GetBytes(endMessage), 0, Encoding.UTF8.GetBytes(endMessage).Length);
-
-                    return Result.Ok("Message sent successfully.");
                 }
                 else
                 {
@@ -110,12 +109,11 @@ namespace Xocket
                     byte[] sizeHeader = Encoding.UTF8.GetBytes(size.ToString("D4"));
                     byte[] fullMessage = sizeHeader.Concat(header).Concat(messageBytes).ToArray();
                     await _stream.WriteAsync(fullMessage, 0, fullMessage.Length);
-                    return Result.Ok("Message sent successfully.");
                 }
             }
             catch (Exception ex)
             {
-                return Result.Fail($"Failed to send message: {ex.Message}");
+                throw new InvalidOperationException($"Failed to send message: {ex.Message}", ex);
             }
         }
         private async void StartListening()
@@ -223,7 +221,10 @@ namespace Xocket
                         await Task.Delay(15);
                     }
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    throw new InvalidOperationException("An error occurred while listening for packets.", ex);
+                }
             });
 
             return () => cancellationTokenSource.Cancel();

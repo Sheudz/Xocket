@@ -19,35 +19,41 @@ namespace Xocket
 
         private List<CancellationTokenSource> _activeListeners = new List<CancellationTokenSource>();
 
-        public Result StartServer(int port)
+        public void StartServer(int port)
         {
+            if (port < 0 || port > 65535)
+            {
+                throw new ArgumentOutOfRangeException(nameof(port), "Invalid port.");
+            }
+
+            if (_isRunning)
+            {
+                throw new InvalidOperationException("Server is already running.");
+            }
+
             try
             {
-                if (port < 0 || port > 65535)
-                {
-                    return Result.Fail("Invalid port.");
-                }
-                if (_isRunning) Result.Fail("Server is already running.");
-
                 _tcpListener = new TcpListener(IPAddress.Any, port);
                 _tcpListener.Start();
                 _isRunning = true;
 
                 _ = ListenForConnectionsAsync();
-                return Result.Ok("Server started successfully.");
             }
             catch (Exception ex)
             {
-                return Result.Fail($"Failed to start server: {ex.Message}");
+                throw new InvalidOperationException($"Failed to start server: {ex.Message}", ex);
             }
         }
 
-        public Result StopServer()
+        public void StopServer()
         {
+            if (!_isRunning)
+            {
+                throw new InvalidOperationException("Server is not running.");
+            }
+
             try
             {
-                if (!_isRunning) return Result.Fail("Server is not running.");
-
                 _isRunning = false;
                 _tcpListener.Stop();
 
@@ -57,26 +63,25 @@ namespace Xocket
                 }
 
                 _activeListeners.Clear();
-                return Result.Ok("Server stopped successfully.");
             }
             catch (Exception ex)
             {
-                return Result.Fail($"Failed to stop server: {ex.Message}");
+                throw new InvalidOperationException($"Failed to stop server: {ex.Message}", ex);
             }
         }
 
-        public Result SetBufferSize(int? size)
+        public void SetBufferSize(int? size)
         {
             if (size < 64)
             {
-                return Result.Fail("Buffer size is too small.");
+                throw new ArgumentOutOfRangeException(nameof(size), "Buffer size is too small.");
             }
             else if (size > 4096)
             {
-                return Result.Fail("Buffer size is too large.");
+                throw new ArgumentOutOfRangeException(nameof(size), "Buffer size is too large.");
             }
+
             BufferSize = size ?? 1024;
-            return Result.Ok();
         }
 
         public Action Listen(string? packetId = null, TcpClient? specificClient = null, Func<TcpClient, byte[], Task> callback = null)
@@ -127,12 +132,16 @@ namespace Xocket
             stopListenAction();
         }
 
-        public async Task<Result> SendMessage(TcpClient client, string? packetId, byte[] messageBytes)
+        public async Task SendMessage(TcpClient client, string? packetId, byte[] messageBytes)
         {
-            if (client == null || !client.Connected) return Result.Fail("Connection lost.");
+            if (client == null || !client.Connected)
+            {
+                throw new InvalidOperationException("Connection lost.");
+            }
+
             if (packetId != null && Encoding.UTF8.GetBytes(packetId).Length > BufferSize * 0.30)
             {
-                return Result.Fail("Packet ID is too long.");
+                throw new ArgumentException("Packet ID is too long.", nameof(packetId));
             }
             try
             {
@@ -159,7 +168,6 @@ namespace Xocket
 
                     string endMessage = Encoding.UTF8.GetBytes($"enddata¶|~{dataId}¶|~{packetId ?? "nullid"}").Length.ToString("D4") + $"enddata¶|~{dataId}¶|~{packetId ?? "nullid"}";
                     await stream.WriteAsync(Encoding.UTF8.GetBytes(endMessage), 0, Encoding.UTF8.GetBytes(endMessage).Length);
-                    return Result.Ok("Message sent successfully.");
                 }
                 else
                 {
@@ -168,12 +176,11 @@ namespace Xocket
                     byte[] fullMessage = sizeHeader.Concat(header).Concat(messageBytes).ToArray();
                     NetworkStream stream = client.GetStream();
                     await stream.WriteAsync(fullMessage, 0, fullMessage.Length);
-                    return Result.Ok("Message sent successfully.");
                 }
             }
             catch (Exception ex)
             {
-                return Result.Fail($"Failed to send message: {ex.Message}");
+                throw new InvalidOperationException($"Failed to send message: {ex.Message}", ex);
             }
         }
 
