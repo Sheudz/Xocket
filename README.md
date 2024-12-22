@@ -54,8 +54,7 @@ namespace XocketTestClient
 
         static async Task Main(string[] args)
         {
-            Result res = client.Connect("127.0.0.1", 5555);
-            Console.WriteLine(res.Message);
+            client.Connect("127.0.0.1", 5555);
             Task FuncOneTask = FuncOne();
             Task FuncTwoTask = FuncTwo();
             await Task.WhenAll(FuncOneTask, FuncTwoTask);
@@ -66,8 +65,7 @@ namespace XocketTestClient
             Console.WriteLine("Thread 1 started!");
             while (true)
             {
-                Result messageresult = await client.SendMessage("funcone", Encoding.UTF8.GetBytes("test1"));
-                Console.WriteLine("func1: " + messageresult.Message);
+                await client.SendMessage("funcone", Encoding.UTF8.GetBytes("test1"));
                 await Task.Delay(100);
             }
         }
@@ -77,8 +75,7 @@ namespace XocketTestClient
             Console.WriteLine("Thread 2 started!");
             while (true)
             {
-                Result messageresult = await client.SendMessage("functwo", Encoding.UTF8.GetBytes("test2"));
-                Console.WriteLine("func2: " + messageresult.Message);
+                await client.SendMessage("functwo", Encoding.UTF8.GetBytes("test2"));
                 await Task.Delay(100);
             }
         }
@@ -119,27 +116,19 @@ class Program
 ### Starts the TCP server on a specified port.
 #### Parameters:
 - `port` (int): The port number to bind the server to. Must be between 0 and 65535.
-#### Returns:
-- Result class
-    - Success: `Server started successfully.`
-    - Failure: `Invalid port.", "Server is already running.", or any exception message.`
+#### Returns: `None.`
 #### Example:
 ```c#
-Result result = server.StartServer(8080);
-Console.WriteLine(result.Success, result.Message);
+server.StartServer(8080);
 ```
 
 ## StopServer() (SERVER ONLY)
 ### Starts the TCP server on a specified port.
 #### Parameters: `None.`
-#### Returns:
-- Result class
-    - Success: `Server stopped successfully.`
-    - Failure: `Server is not running." or any exception message.`
+#### Returns: `None.`
 #### Example:
 ```c#
-Result result = server.StopServer();
-Console.WriteLine(result.Success, result.Message);
+server.StopServer();
 ```
 
 ## Connect(string host, int port) (CLIENT ONLY)
@@ -147,56 +136,29 @@ Console.WriteLine(result.Success, result.Message);
 #### Parameters:
 - `host` (string): The hostname or IP address of the server.
 - `port` (int): The port number of the server. Must be between `0` and `65535`.
-#### Returns:
-- Result class
-    - Success: `Connection established successfully.`
-    - Failure: `Error: {exception message}`
+#### Returns: `None.`
 #### Example:
 ```c#
-Result result = client.Connect("127.0.0.1", 8080);
-if (result.Success)
-{
-    Console.WriteLine("Connected to the server.");
-}
-else
-{
-    Console.WriteLine($"Failed to connect: {result.Message}");
-}
-
+client.Connect("127.0.0.1", 8080);
 ```
 
 ## Disconnect() (CLIENT ONLY)
 ### Terminates the connection to the remote TCP server.
 #### Parameters: `None.`
-#### Returns:
-- Result class
-    - Success: `Disconnected successfully.`
-    - Failure: `Error: {exception message}`
+#### Returns: `None.`
 #### Example:
 ```c#
-Result result = client.Connect("127.0.0.1", 8080);
-if (result.Success)
-{
-    Console.WriteLine("Connected to the server.");
-}
-else
-{
-    Console.WriteLine($"Failed to connect: {result.Message}");
-}
+client.Connect("127.0.0.1", 8080);
 ```
 
 ## SetBufferSize(int? size)
 ### Configures the buffer size for packet handling.
 #### Parameters:
 - `size` (nullable int): Desired buffer size in bytes. If null, defaults to 1024. Must be between 64 and 4096
-#### Returns:
-- Result class
-    - Success: `Success.`
-    - Failure: `Buffer size is too small." or "Buffer size is too large.`
+#### Returns: `None.`
 #### Example:
 ```c#
-Result result = server.StopServer();
-Console.WriteLine(result.Success, result.Message);
+server.SetBufferSize(4096);
 ```
 
 ## SendMessage(string? packetId, byte[] message) (FOR CLIENT)
@@ -204,14 +166,10 @@ Console.WriteLine(result.Success, result.Message);
 #### Parameters:
 - `packetId` (string?): An optional identifier for the packet. If not provided, defaults to "nullid"
 - `message` (byte[]): The message content to be sent.
-#### Returns:
-- Result class
-    - Success: `Message sent successfully.`
-    - Failure: `Connection lost.`, `Packet ID is too long.`, `Failed to send message: {ex.Message}`.
+#### Returns: `None.`
 #### Example:
 ```c#
-Result result = await client.SendMessage("12345", Encoding.UTF8.GetBytes("Hello, World!"));
-Console.WriteLine(result.Message);
+await client.SendMessage("12345", Encoding.UTF8.GetBytes("Hello, World!"));
 ```
 
 ## SendMessage(TcpClient client, string? packetId, byte[] message) (FOR SERVER)
@@ -220,14 +178,10 @@ Console.WriteLine(result.Message);
 - `client` (TcpClient): client to whom the message will be sent
 - `packetId` (string?): An optional identifier for the packet. If not provided, defaults to "nullid"
 - `message` (byte[]): The message content to be sent.
-#### Returns:
-- Result class
-    - Success: `Message sent successfully.`
-    - Failure: `Connection lost.`, `Packet ID is too long.`, `Failed to send message: {ex.Message}`.
+#### Returns: `None.`
 #### Example:
 ```c#
-Result result = await server.SendMessage(client, "12345", Encoding.UTF8.GetBytes("Hello, World!"));
-Console.WriteLine(result.Message);
+await server.SendMessage(client, "12345", Encoding.UTF8.GetBytes("Hello, World!"));
 ```
 
 # Event Handler Registrator
