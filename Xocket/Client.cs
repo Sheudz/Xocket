@@ -85,7 +85,6 @@ namespace Xocket
                     string startMessage = $"{Encoding.UTF8.GetBytes($"startlistening¶|~{dataId}").Length:D4}startlistening¶|~{dataId}";
 
                     await _stream.WriteAsync(Encoding.UTF8.GetBytes(startMessage), 0, Encoding.UTF8.GetBytes(startMessage).Length);
-
                     int chunkSize = BufferSize - Encoding.UTF8.GetBytes($"appenddata¶|~{dataId}¶|~").Length - 4;
                     int bytesSent = 0;
 
@@ -105,7 +104,7 @@ namespace Xocket
                 }
                 else
                 {
-                    int size = 4 + header.Length + messageBytes.Length;
+                    int size = header.Length + messageBytes.Length;
                     byte[] sizeHeader = Encoding.UTF8.GetBytes(size.ToString("D4"));
                     byte[] fullMessage = sizeHeader.Concat(header).Concat(messageBytes).ToArray();
                     await _stream.WriteAsync(fullMessage, 0, fullMessage.Length);
@@ -116,71 +115,97 @@ namespace Xocket
                 throw new InvalidOperationException($"Failed to send message: {ex.Message}", ex);
             }
         }
+
         private async void StartListening()
         {
             byte[] buffer = new byte[BufferSize];
-
             try
             {
                 while (_client.Connected)
                 {
-                    int bytesRead = await _stream.ReadAsync(buffer, 0, 4);
-                    if (bytesRead == 0) break;
+                    int bytesRead = 0;
+                    int totalBytesRead = 0;
+
+                    while (totalBytesRead < 4)
+                    {
+                        bytesRead = await _stream.ReadAsync(buffer, totalBytesRead, 4 - totalBytesRead);
+                        if (bytesRead == 0) break;
+                        totalBytesRead += bytesRead;
+                    }
+
+                    if (totalBytesRead == 0) break;
 
                     string messageSizeStr = Encoding.UTF8.GetString(buffer, 0, 4);
                     if (!int.TryParse(messageSizeStr, out int messageSize)) continue;
                     if (messageSize <= 0 || messageSize > BufferSize) continue;
 
-                    bytesRead = await _stream.ReadAsync(buffer, 0, messageSize);
-                    if (bytesRead == 0) break;
-
-                    byte[] message = buffer.Take(bytesRead).ToArray();
-                    try
+                    using (MemoryStream memoryStream = new MemoryStream())
                     {
-                        string header = Encoding.UTF8.GetString(message);
-                        string[] messageParts = header.Split(new string[] { "¶|~" }, StringSplitOptions.None);
+                        int remainingBytes = messageSize;
+                        totalBytesRead = 0;
 
-                        if (messageParts.Length > 0)
+                        while (remainingBytes > 0)
                         {
-                            if (messageParts[0] == "singlemessage")
-                            {
-                                string packetId = messageParts[1];
-                                int headerLength = Encoding.UTF8.GetBytes($"singlemessage¶|~{packetId}¶|~").Length;
-                                byte[] payload = message.Skip(headerLength).ToArray();
-                                CompletedPackets[packetId] = payload;
-                            }
-                            else if (messageParts[0] == "startlistening")
-                            {
-                                string dataId = messageParts[1];
+                            bytesRead = await _stream.ReadAsync(buffer, 0, Math.Min(BufferSize, remainingBytes));
+                            if (bytesRead == 0) break;
 
-                                PendingPackets[dataId] = new byte[] { };
-                            }
-                            else if (messageParts[0] == "appenddata")
-                            {
-                                string dataId = messageParts[1];
-                                int headerLength = Encoding.UTF8.GetBytes($"appenddata¶|~{dataId}¶|~").Length;
-                                byte[] payload = message.Skip(headerLength).ToArray();
+                            memoryStream.Write(buffer, 0, bytesRead);
+                            remainingBytes -= bytesRead;
+                        }
 
-                                if (PendingPackets.ContainsKey(dataId))
+                        if (remainingBytes > 0)
+                        {
+                            continue;
+                        }
+
+                        byte[] message = memoryStream.ToArray();
+
+                        try
+                        {
+                            string header = Encoding.UTF8.GetString(message);
+                            string[] messageParts = header.Split(new string[] { "¶|~" }, StringSplitOptions.None);
+
+                            if (messageParts.Length > 0)
+                            {
+                                if (messageParts[0] == "singlemessage")
                                 {
-                                    PendingPackets[dataId] = PendingPackets[dataId].Concat(payload).ToArray();
-                                }
-                            }
-                            else if (messageParts[0] == "enddata")
-                            {
-                                string dataId = messageParts[1];
-                                if (PendingPackets.ContainsKey(dataId))
-                                {
-                                    string packetId = messageParts[2];
-                                    byte[] payload = PendingPackets[dataId];
-
+                                    string packetId = messageParts[1];
+                                    int headerLength = Encoding.UTF8.GetBytes($"singlemessage¶|~{packetId}¶|~").Length;
+                                    byte[] payload = message.Skip(headerLength).ToArray();
                                     CompletedPackets[packetId] = payload;
-                                    PendingPackets.Remove(dataId);
+                                }
+                                else if (messageParts[0] == "startlistening")
+                                {
+                                    string dataId = messageParts[1];
+                                    PendingPackets[dataId] = new byte[] { };
+                                }
+                                else if (messageParts[0] == "appenddata")
+                                {
+                                    string dataId = messageParts[1];
+                                    int headerLength = Encoding.UTF8.GetBytes($"appenddata¶|~{dataId}¶|~").Length;
+                                    byte[] payload = message.Skip(headerLength).ToArray();
+
+                                    if (PendingPackets.ContainsKey(dataId))
+                                    {
+                                        PendingPackets[dataId] = PendingPackets[dataId].Concat(payload).ToArray();
+                                    }
+                                }
+                                else if (messageParts[0] == "enddata")
+                                {
+                                    string dataId = messageParts[1];
+                                    if (PendingPackets.ContainsKey(dataId))
+                                    {
+                                        string packetId = messageParts[2];
+                                        byte[] payload = PendingPackets[dataId];
+
+                                        CompletedPackets[packetId] = payload;
+                                        PendingPackets.Remove(dataId);
+                                    }
                                 }
                             }
                         }
+                        catch { }
                     }
-                    catch { }
                 }
             }
             catch { }
