@@ -1,5 +1,6 @@
 ﻿using System.Net.Sockets;
 using System.Text;
+using System.Diagnostics;
 
 namespace Xocket
 {
@@ -49,6 +50,7 @@ namespace Xocket
                 throw new InvalidOperationException($"Error during disconnect: {ex.Message}", ex);
             }
         }
+
         public void SetBufferSize(int? size)
         {
             if (size < 64)
@@ -84,7 +86,7 @@ namespace Xocket
                     string dataId = Guid.NewGuid().ToString();
                     string startMessage = $"{Encoding.UTF8.GetBytes($"startlistening¶|~{dataId}").Length:D4}startlistening¶|~{dataId}";
 
-                    await _stream.WriteAsync(Encoding.UTF8.GetBytes(startMessage), 0, Encoding.UTF8.GetBytes(startMessage).Length);
+                    _stream.WriteAsync(Encoding.UTF8.GetBytes(startMessage), 0, Encoding.UTF8.GetBytes(startMessage).Length);
                     int chunkSize = BufferSize - Encoding.UTF8.GetBytes($"appenddata¶|~{dataId}¶|~").Length - 4;
                     int bytesSent = 0;
 
@@ -95,19 +97,19 @@ namespace Xocket
                         byte[] chunk = chunkHeader.Concat(messageBytes.Skip(bytesSent).Take(bytesToSend)).ToArray();
                         byte[] chunkLength = Encoding.UTF8.GetBytes(chunk.Length.ToString("D4"));
                         byte[] appendMessage = chunkLength.Concat(chunk).ToArray();
-                        await _stream.WriteAsync(appendMessage, 0, appendMessage.Length);
+                        _stream.WriteAsync(appendMessage, 0, appendMessage.Length);
                         bytesSent += bytesToSend;
                     }
 
                     string endMessage = Encoding.UTF8.GetBytes($"enddata¶|~{dataId}¶|~{packetId ?? "nullid"}").Length.ToString("D4") + $"enddata¶|~{dataId}¶|~{packetId ?? "nullid"}";
-                    await _stream.WriteAsync(Encoding.UTF8.GetBytes(endMessage), 0, Encoding.UTF8.GetBytes(endMessage).Length);
+                    _stream.WriteAsync(Encoding.UTF8.GetBytes(endMessage), 0, Encoding.UTF8.GetBytes(endMessage).Length);
                 }
                 else
                 {
                     int size = header.Length + messageBytes.Length;
                     byte[] sizeHeader = Encoding.UTF8.GetBytes(size.ToString("D4"));
                     byte[] fullMessage = sizeHeader.Concat(header).Concat(messageBytes).ToArray();
-                    await _stream.WriteAsync(fullMessage, 0, fullMessage.Length);
+                    _stream.WriteAsync(fullMessage, 0, fullMessage.Length);
                 }
             }
             catch (Exception ex)
