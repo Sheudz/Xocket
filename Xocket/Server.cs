@@ -16,7 +16,7 @@ namespace Xocket
 
         private static readonly ConditionalWeakTable<TcpClient, ClientEventHandlers> ClientEventTable =
             new ConditionalWeakTable<TcpClient, ClientEventHandlers>();
-
+        public event Action<TcpClient> OnClientConnected;
         private List<CancellationTokenSource> _activeListeners = new List<CancellationTokenSource>();
 
         public void StartServer(int port)
@@ -187,6 +187,7 @@ namespace Xocket
                 {
                     TcpClient client = await _tcpListener.AcceptTcpClientAsync();
                     client.NoDelay = true;
+                    OnClientConnected?.Invoke(client);
                     _ = HandleClientAsync(client);
                 }
             }
@@ -329,6 +330,11 @@ namespace Xocket
             {
                 ClientEventTable.AddOrUpdate(client, new ClientEventHandlers(callback));
             }
+        }
+
+        public void OnConnect(Action<TcpClient> callback)
+        {
+            OnClientConnected += callback;
         }
 
         private class ClientEventHandlers
