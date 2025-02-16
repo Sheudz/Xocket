@@ -84,7 +84,7 @@ namespace Xocket
                 if (4 + messageBytes.Length + header.Length > BufferSize)
                 {
                     string dataId = Guid.NewGuid().ToString();
-                    string startMessage = $"{Encoding.UTF8.GetBytes($"startlistening¶|~{dataId}").Length:D4}startlistening¶|~{dataId}";
+                    string startMessage = $"{Encoding.UTF8.GetBytes($"startlistening¶|~{dataId}¶|~{messageBytes.Length}").Length:D4}startlistening¶|~{dataId}¶|~{messageBytes.Length}";
 
                     _stream.WriteAsync(Encoding.UTF8.GetBytes(startMessage), 0, Encoding.UTF8.GetBytes(startMessage).Length);
                     int chunkSize = BufferSize - Encoding.UTF8.GetBytes($"appenddata¶|~{dataId}¶|~").Length - 4;

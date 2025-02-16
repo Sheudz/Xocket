@@ -11,7 +11,7 @@ namespace Xocket
         private TcpListener _tcpListener;
         private bool _isRunning;
         public int BufferSize { get; private set; } = 1024;
-        private static Dictionary<string, byte[]> PendingPackets = new Dictionary<string, byte[]>();
+        private static Dictionary<string, (int, byte[])> PendingPackets = new Dictionary<string, (int, byte[])>();
         private static Dictionary<string, Tuple<byte[], TcpClient>> CompletedPackets = new Dictionary<string, Tuple<byte[], TcpClient>>();
 
         private static readonly ConditionalWeakTable<TcpClient, ClientEventHandlers> ClientEventTable =
@@ -263,30 +263,44 @@ namespace Xocket
                                 else if (messageParts[0] == "startlistening")
                                 {
                                     string dataId = messageParts[1];
-                                    PendingPackets[dataId] = Array.Empty<byte>();
+
+                                    PendingPackets[dataId] = (0, new byte[int.Parse(messageParts[2])]);
+
                                 }
+
                                 else if (messageParts[0] == "appenddata")
                                 {
                                     string dataId = messageParts[1];
-                                    if (PendingPackets.TryGetValue(dataId, out byte[] existingData))
+
+                                    if (PendingPackets.TryGetValue(dataId, out var packetData))
                                     {
+                                        int writtenBytes = packetData.Item1;
+                                        byte[] dataArray = packetData.Item2;
+
                                         int headerLength = Encoding.UTF8.GetBytes($"appenddata\u00b6|~{dataId}\u00b6|~").Length;
                                         byte[] payloadBytes = receivedBytes.Skip(headerLength).ToArray();
 
-                                        PendingPackets[dataId] = existingData.Concat(payloadBytes).ToArray();
+                                        if (writtenBytes + payloadBytes.Length <= dataArray.Length)
+                                        {
+                                            Array.Copy(payloadBytes, 0, dataArray, writtenBytes, payloadBytes.Length);
+                                            PendingPackets[dataId] = (writtenBytes + payloadBytes.Length, dataArray);
+                                        }
                                     }
                                 }
                                 else if (messageParts[0] == "enddata")
                                 {
                                     string dataId = messageParts[1];
-                                    if (PendingPackets.TryGetValue(dataId, out byte[] finalData))
+                                    if (PendingPackets.TryGetValue(dataId, out var packetData))
                                     {
                                         string packetId = messageParts[2];
+
+                                        byte[] finalData = packetData.Item2;
 
                                         CompletedPackets[packetId] = Tuple.Create(finalData, client);
                                         PendingPackets.Remove(dataId);
                                     }
                                 }
+
                             }
                         }
                         catch { }
